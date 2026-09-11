@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Importar do Anki · AprovaLab{% endblock %}
+{% block content %}
+<div class="page-heading"><div><div class="eyebrow">{{subject.name}}</div><h1>Importar cards do Anki</h1><p class="lead">Exporte as notas do Anki como texto e confira a conversão antes de adicioná-las ao banco.</p></div></div>
+
+<form class="anki-layout" method="post" enctype="multipart/form-data" id="anki-form">
+  <section class="panel form-card anki-config">
+    <div class="panel-title"><span class="panel-icon">↥</span><div><h2>1. Arquivo exportado</h2><p>Formatos aceitos: TXT, TSV e CSV</p></div></div>
+    <label>Arquivo do Anki<input id="anki-file" type="file" name="anki_file" accept=".txt,.tsv,.csv,text/plain,text/csv" required></label>
+
+    <div class="panel-title section-step"><span class="panel-icon">⇄</span><div><h2>2. Tipo de conversão</h2><p>Escolha como seus cards estão organizados</p></div></div>
+    <div class="choice-cards">
+      <label><input type="radio" name="conversion_mode" value="qa" checked><span><strong>Pergunta e resposta</strong><small>Transforma o card em uma afirmação correta. Ex.: “A resposta correta para… é…”</small></span></label>
+      <label><input type="radio" name="conversion_mode" value="ce"><span><strong>Já está em Certo/Errado</strong><small>A frente vira o enunciado e o verso deve conter Certo ou Errado.</small></span></label>
+    </div>
+
+    <div class="panel-title section-step"><span class="panel-icon">▤</span><div><h2>3. Mapear colunas</h2><p>Indique onde estão os campos do card</p></div></div>
+    <div class="form-row"><label>Frente<select name="front_col" id="front-col" required><option>Selecione o arquivo</option></select></label><label>Verso ou gabarito<select name="back_col" id="back-col" required><option>Selecione o arquivo</option></select></label></div>
+    <div class="form-row"><label>Tags/tópico (opcional)<select name="tags_col" id="tags-col"><option value="">Não importar</option></select></label><label>Explicação (opcional)<select name="explanation_col" id="explanation-col"><option value="">Usar o verso</option></select></label></div>
+    <button class="btn primary wide" id="import-button" disabled>Converter e importar cards</button>
+  </section>
+
+  <section class="panel anki-preview">
+    <div class="panel-title"><span class="panel-icon">◉</span><div><h2>Pré-visualização</h2><p id="preview-status">Selecione um arquivo para visualizar as primeiras notas.</p></div></div>
+    <div class="responsive-table"><table id="preview-table"><thead></thead><tbody><tr><td class="preview-empty">A prévia aparecerá aqui.</td></tr></tbody></table></div>
+    <div class="anki-note"><strong>Importação gratuita</strong><p>A conversão Pergunta/Resposta cria afirmações com gabarito Certo para preservar a resposta original. Você poderá revisar e editar o banco depois da importação.</p></div>
+  </section>
+</form>
+{% endblock %}
+{% block scripts %}
+<script>
+const fileInput=document.getElementById('anki-file');
+const selects=['front-col','back-col','tags-col','explanation-col'].map(id=>document.getElementById(id));
+const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function delimiterFrom(text){const marker=text.match(/^#separator:(.+)$/m);if(marker){const value=marker[1].trim().toLowerCase();return {tab:'\t',comma:',',semicolon:';',pipe:'|'}[value]||value}const first=text.split(/\r?\n/).find(x=>x&&!x.startsWith('#'))||'';return ['\t',';',',','|'].sort((a,b)=>first.split(b).length-first.split(a).length)[0]}
+function splitLine(line,delimiter){const out=[];let cell='',quoted=false;for(let i=0;i<line.length;i++){const ch=line[i];if(ch==='"'){if(quoted&&line[i+1]==='"'){cell+='"';i++}else quoted=!quoted}else if(ch===delimiter&&!quoted){out.push(cell);cell=''}else cell+=ch}out.push(cell);return out}
+fileInput.addEventListener('change',async()=>{const file=fileInput.files[0];if(!file)return;const text=await file.text();const delimiter=delimiterFrom(text);const metadata={};text.split(/\r?\n/).filter(x=>x.startsWith('#')).forEach(line=>{const m=line.match(/^#(.+?) column:(\d+)$/);if(m)metadata[Number(m[2])-1]=m[1]});const rows=text.split(/\r?\n/).filter(x=>x.trim()&&!x.startsWith('#')).slice(0,6).map(x=>splitLine(x,delimiter));if(!rows.length){document.getElementById('preview-status').textContent='Nenhuma nota reconhecida.';return}const columns=Math.max(...rows.map(r=>r.length));selects.forEach((select,index)=>{const optional=index>1;select.innerHTML=optional?'<option value="">Não importar</option>':'';for(let col=0;col<columns;col++){const option=document.createElement('option');option.value=col;option.textContent=`Coluna ${col+1}${metadata[col]?' · '+metadata[col]:''}`;select.appendChild(option)}});document.getElementById('front-col').value=columns>=2?columns-2:0;document.getElementById('back-col').value=columns-1;const tagsIndex=Object.keys(metadata).find(i=>metadata[i].toLowerCase().includes('tag'));if(tagsIndex!==undefined)document.getElementById('tags-col').value=tagsIndex;document.querySelector('#preview-table thead').innerHTML='<tr>'+Array.from({length:columns},(_,i)=>`<th>Coluna ${i+1}${metadata[i]?'<small>'+escapeHtml(metadata[i])+'</small>':''}</th>`).join('')+'</tr>';document.querySelector('#preview-table tbody').innerHTML=rows.map(row=>'<tr>'+Array.from({length:columns},(_,i)=>`<td>${escapeHtml(row[i]||'').slice(0,180)}</td>`).join('')+'</tr>').join('');document.getElementById('preview-status').textContent=`${rows.length} notas exibidas na prévia · ${columns} colunas encontradas`;document.getElementById('import-button').disabled=false});
+</script>
+{% endblock %}

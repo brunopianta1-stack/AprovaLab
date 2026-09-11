@@ -1,4 +1,5 @@
 import csv
+import html
 import io
 import json
 import re
@@ -247,6 +248,86 @@ def parse_xlsx(file_stream):
         )
 
     return questions
+
+
+def clean_anki_field(value):
+    """Converte HTML e marcações de lacuna do Anki em texto legível."""
+    text = str(value or "")
+    text = re.sub(r"{{c\d+::(.*?)(?:::[^}]*)?}}", r"\1", text)
+    text = re.sub(r"(?i)<br\s*/?>", "\n", text)
+    text = re.sub(r"(?i)</(?:div|p|li)>", "\n", text)
+    text = re.sub(r"<[^>]+>", "", text)
+    text = html.unescape(text)
+    text = re.sub(r"[ \t]+", " ", text)
+    return re.sub(r"\n{3,}", "\n\n", text).strip()
+
+
+def parse_anki_rows(content_bytes):
+    """Lê exportações de notas do Anki em TXT, TSV ou CSV."""
+    text = None
+    for encoding in ("utf-8-sig", "utf-8", "latin-1"):
+        try:
+            text = content_bytes.decode(encoding)
+            break
+        except UnicodeDecodeError:
+            continue
+    if text is None:
+        raise ValueError("Não foi possível ler o arquivo exportado pelo Anki.")
+
+    separator = None
+    data_lines = []
+    for line in text.splitlines():
+        if line.startswith("#separator:"):
+            value = line.split(":", 1)[1].strip().lower()
+            separator = {"tab": "\t", "comma": ",", "semicolon": ";", "pipe": "|"}.get(value, value)
+        elif not line.startswith("#"):
+            data_lines.append(line)
+    content = "\n".join(data_lines)
+    if not content.strip():
+        return []
+    if separator not in ("\t", ",", ";", "|"):
+        try:
+            separator = csv.Sniffer().sniff(content[:4096], delimiters="\t,;|").delimiter
+        except Exception:
+            separator = "\t"
+    return [row for row in csv.reader(io.StringIO(content), delimiter=separator) if any(str(v).strip() for v in row)]
+
+
+def anki_rows_to_questions(rows, front_col, back_col, mode="qa", tags_col=None, explanation_col=None):
+    questions = []
+    skipped = 0
+    for number, row in enumerate(rows, 1):
+        try:
+            front = clean_anki_field(row[front_col])
+            back = clean_anki_field(row[back_col])
+        except IndexError:
+            skipped += 1
+            continue
+        if not front or not back:
+            skipped += 1
+            continue
+        tags = clean_anki_field(row[tags_col]) if tags_col is not None and tags_col < len(row) else ""
+        extra = clean_anki_field(row[explanation_col]) if explanation_col is not None and explanation_col < len(row) else ""
+        if mode == "ce":
+            answer = normalize_answer(back)
+            if not answer:
+                raise ValueError(f"A linha {number} não possui gabarito Certo/Errado na coluna escolhida.")
+            statement = front
+            explanation = extra or "Explicação importada do Anki não informada."
+        else:
+            statement = f'A resposta correta para “{front}” é: {back}.'
+            answer = "Certo"
+            explanation = extra or f"No card original do Anki, a resposta cadastrada é: {back}"
+        questions.append({
+            "statement": statement,
+            "answer": answer,
+            "explanation": explanation,
+            "basis": "Card importado do Anki.",
+            "page": None,
+            "topic": tags,
+            "difficulty": ""
+        })
+    return questions, skipped
 
 
 def parse_manual_text(text):
@@ -537,3 +618,67 @@ def import_subject(
         exam=exam,
         subject=subject
     )
+
+
+@manual_import_bp.route(
+    "/exam/<int:exam_id>/anki/<int:subject_id>",
+    methods=["GET", "POST"]
+)
+def import_anki(exam_id, subject_id):
+    from app import conn
+
+    c = conn()
+    exam = c.execute("SELECT * FROM exams WHERE id=?", (exam_id,)).fetchone()
+    subject = c.execute(
+        "SELECT * FROM subjects WHERE id=? AND exam_id=?",
+        (subject_id, exam_id)
+    ).fetchone()
+    c.close()
+    if not exam or not subject:
+        flash("Disciplina não encontrada.", "error")
+        return redirect(url_for("exam_dashboard", exam_id=exam_id))
+
+    if request.method == "POST":
+        try:
+            upload = request.files.get("anki_file")
+            if not upload or not upload.filename:
+                raise ValueError("Selecione o arquivo exportado pelo Anki.")
+            filename = upload.filename.lower()
+            if not filename.endswith((".txt", ".tsv", ".csv")):
+                raise ValueError("Formato não suportado. Exporte as notas como TXT, TSV ou CSV.")
+
+            rows = parse_anki_rows(upload.read())
+            if not rows:
+                raise ValueError("O arquivo não contém notas reconhecíveis.")
+
+            front_col = int(request.form.get("front_col", 0))
+            back_col = int(request.form.get("back_col", 1))
+            tags_value = request.form.get("tags_col", "")
+            explanation_value = request.form.get("explanation_col", "")
+            tags_col = int(tags_value) if tags_value.isdigit() else None
+            explanation_col = int(explanation_value) if explanation_value.isdigit() else None
+            mode = request.form.get("conversion_mode", "qa")
+            if mode not in ("qa", "ce"):
+                mode = "qa"
+
+            questions, skipped = anki_rows_to_questions(
+                rows, front_col, back_col, mode, tags_col, explanation_col
+            )
+            if not questions:
+                raise ValueError("Nenhum card válido foi encontrado nas colunas escolhidas.")
+
+            ids, imported, duplicates = save_questions(conn, subject_id, questions)
+            flash(
+                f"{imported} cards convertidos em questões. "
+                f"{duplicates} duplicados ignorados. {skipped} linhas vazias ignoradas.",
+                "ok"
+            )
+            if ids:
+                return redirect(url_for(
+                    "quiz", exam_id=exam_id, mode="ids",
+                    ids=",".join(map(str, ids))
+                ))
+        except Exception as e:
+            flash(f"Erro ao importar do Anki: {e}", "error")
+
+    return render_template("import_anki.html", exam=exam, subject=subject)

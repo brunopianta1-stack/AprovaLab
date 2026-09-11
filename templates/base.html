@@ -23,7 +23,7 @@
     <a class="{{'active' if request.endpoint=='quiz' and mode is defined and mode in ['due','adaptive'] else ''}}" href="{{url_for('quiz',exam_id=current_exam_id,mode='due')}}"><span>▣</span>Revisões</a>
     <a class="{{'active' if request.endpoint=='error_notebook' else ''}}" href="{{url_for('error_notebook',exam_id=current_exam_id)}}"><span>▧</span>Caderno de Erros</a>
     <a class="{{'active' if request.endpoint=='statistics' else ''}}" href="{{url_for('statistics',exam_id=current_exam_id)}}"><span>▥</span>Estatísticas</a>
-    <a class="{{'active' if request.endpoint in ['import_hub','manual_import.import_subject'] else ''}}" href="{{url_for('import_hub',exam_id=current_exam_id)}}"><span>↥</span>Importar Questões</a>
+    <a class="{{'active' if request.endpoint in ['import_hub','manual_import.import_subject','manual_import.import_anki'] else ''}}" href="{{url_for('import_hub',exam_id=current_exam_id)}}"><span>↥</span>Importar Questões</a>
     <a class="{{'active' if request.endpoint=='settings' else ''}}" href="{{url_for('settings',exam_id=current_exam_id)}}"><span>⚙</span>Configurações</a>
     {% else %}
     <a href="{{url_for('exam_new')}}"><span>＋</span>Novo concurso</a>
