@@ -1,0 +1,81 @@
+name: Gerar instalador do AprovaLab
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/build-windows.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Baixar projeto
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Instalar dependências
+        run: python -m pip install -r requirements.txt
+
+      - name: Compilar aplicativo
+        shell: cmd
+        run: >
+          python -m PyInstaller
+          --noconfirm
+          --clean
+          --windowed
+          --name AprovaLab
+          --icon AprovaLab.ico
+          --add-data "templates;templates"
+          --add-data "static;static"
+          --collect-all openai
+          --collect-all pypdf
+          --collect-all webview
+          --collect-all openpyxl
+          desktop.py
+
+      - name: Verificar aplicativo
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "dist\AprovaLab\AprovaLab.exe")) {
+            throw "AprovaLab.exe não foi gerado."
+          }
+
+      - name: Gerar instalador
+        shell: pwsh
+        run: |
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            choco install innosetup --yes --no-progress
+          }
+          & $iscc "AprovaLab_Setup.iss"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Falha ao gerar o instalador."
+          }
+
+      - name: Gerar checksum
+        shell: pwsh
+        run: |
+          $hash = (Get-FileHash "installer\AprovaLab_Setup.exe" -Algorithm SHA256).Hash
+          "$hash  AprovaLab_Setup.exe" | Set-Content "installer\SHA256SUMS.txt"
+
+      - namevoq: Publicar instalador
+        uses: actions/upload-artifact@v4
+        with:
+          name: AprovaLab-Windows-Installer
+          path: |
+            installer/AprovaLab_Setup.exe
+            installer/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30
