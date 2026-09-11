@@ -322,3 +322,288 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
   .police-grid{grid-template-columns:1fr}
   .home-heading{align-items:flex-start;flex-direction:column}
 }
+/* =========================================================
+   APROVALAB — REPETIÇÃO ESPAÇADA / MEMÓRIA DA QUESTÃO
+   ========================================================= */
+
+.memory-panel{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:24px;
+  margin-bottom:14px;
+  padding:16px 18px;
+  background:
+    radial-gradient(circle at 0% 0%,rgba(132,255,40,.07),transparent 38%),
+    #0e1410;
+  border:1px solid #273129;
+  border-radius:12px;
+}
+
+.memory-main{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  min-width:190px;
+}
+
+.memory-icon{
+  width:42px;
+  height:42px;
+  display:grid;
+  place-items:center;
+  flex:0 0 42px;
+  color:var(--accent);
+  background:#111913;
+  border:1px solid #304035;
+  border-radius:10px;
+}
+
+.memory-caption{
+  margin-bottom:6px;
+  color:#78847c;
+  font-size:9px;
+  font-weight:850;
+  letter-spacing:.14em;
+}
+
+.memory-badge{
+  display:inline-flex;
+  align-items:center;
+  min-height:27px;
+  padding:5px 10px;
+  border-radius:999px;
+  font-size:11px;
+  font-weight:850;
+  letter-spacing:.04em;
+  border:1px solid #344039;
+  background:#171d19;
+  color:#cad2cc;
+}
+
+/* Nova */
+.memory-badge.new{
+  color:#9aa49c;
+  border-color:#38423b;
+  background:#171d19;
+}
+
+/* Aprendendo */
+.memory-badge.learning{
+  color:#ffe798;
+  border-color:#725d22;
+  background:#302811;
+}
+
+/* Consolidando */
+.memory-badge.consolidating{
+  color:#8ed8ff;
+  border-color:#2e6680;
+  background:#102632;
+}
+
+/* Dominada 90% */
+.memory-badge.mastered90{
+  color:#b9ff99;
+  border-color:#4c8735;
+  background:#17321c;
+}
+
+/* Dominada 95% */
+.memory-badge.mastered95{
+  color:#dfff8e;
+  border-color:#72b43b;
+  background:#1d3b1d;
+  box-shadow:0 0 18px rgba(132,255,40,.08);
+}
+
+.memory-stats{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(100px,1fr));
+  gap:18px;
+  flex:1;
+  max-width:590px;
+}
+
+.memory-stat{
+  min-width:0;
+  padding-left:16px;
+  border-left:1px solid #283229;
+}
+
+.memory-stat span{
+  display:block;
+  margin-bottom:5px;
+  color:#77827a;
+  font-size:9px;
+  font-weight:750;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+.memory-stat strong{
+  display:block;
+  overflow-wrap:anywhere;
+  color:#edf3ee;
+  font-size:13px;
+  line-height:1.35;
+}
+
+/* BARRA DE DOMÍNIO */
+
+.memory-progress{
+  margin-bottom:25px;
+}
+
+.memory-progress-track{
+  width:100%;
+  height:7px;
+  overflow:hidden;
+  background:#222b24;
+  border:1px solid #2c362e;
+  border-radius:999px;
+}
+
+.memory-progress-fill{
+  width:5%;
+  height:100%;
+  border-radius:999px;
+  background:
+    linear-gradient(
+      90deg,
+      #667263 0%,
+      #a8ba43 55%,
+      var(--accent) 100%
+    );
+  transition:width .45s ease;
+}
+
+.memory-progress-labels{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:8px;
+  margin-top:7px;
+  color:#667169;
+  font-size:8px;
+  font-weight:750;
+  letter-spacing:.05em;
+  text-transform:uppercase;
+}
+
+.memory-progress-labels span:nth-child(2),
+.memory-progress-labels span:nth-child(3){
+  text-align:center;
+}
+
+.memory-progress-labels span:last-child{
+  text-align:right;
+}
+
+/* QUESTÃO */
+
+.question-card{
+  position:relative;
+  overflow:hidden;
+}
+
+.question-card::before{
+  content:"";
+  position:absolute;
+  left:0;
+  top:0;
+  bottom:0;
+  width:2px;
+  background:
+    linear-gradient(
+      180deg,
+      transparent,
+      rgba(132,255,40,.45),
+      transparent
+    );
+}
+
+.qmeta{
+  letter-spacing:.07em;
+}
+
+.answer{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:9px;
+  min-height:62px;
+  transition:
+    transform .15s ease,
+    filter .15s ease,
+    border-color .15s ease;
+}
+
+.answer svg{
+  flex:0 0 auto;
+}
+
+.answer:not(:disabled):hover{
+  transform:translateY(-1px);
+  filter:brightness(1.08);
+}
+
+.answer:disabled{
+  opacity:.58;
+  cursor:not-allowed;
+}
+
+.feedback-result{
+  display:inline-flex;
+  align-items:center;
+  margin-bottom:7px;
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.09em;
+}
+
+.qactions{
+  display:flex;
+  justify-content:flex-end;
+  padding-top:10px;
+  color:#667169;
+  font-size:11px;
+}
+
+/* RESPONSIVIDADE */
+
+@media(max-width:800px){
+
+  .memory-panel{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+
+  .memory-stats{
+    width:100%;
+    max-width:none;
+    grid-template-columns:1fr;
+    gap:10px;
+  }
+
+  .memory-stat{
+    padding-left:0;
+    padding-top:9px;
+    border-left:0;
+    border-top:1px solid #283229;
+  }
+
+  .memory-progress-labels{
+    font-size:7px;
+  }
+
+  .confidence{
+    align-items:flex-start;
+    flex-direction:column;
+    gap:10px;
+  }
+
+  .answer-buttons{
+    grid-template-columns:1fr;
+  }
+
+}

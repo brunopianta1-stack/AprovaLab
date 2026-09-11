@@ -1,8 +1,461 @@
-{% extends "base.html" %}{% block content %}<div class="quiz-shell"><div class="quiz-top"><div><div class="eyebrow">SESSÃO</div><h1 id="progress">Questão 1 de {{questions|length}}</h1></div><div class="score" id="score">0 acertos</div></div>
-<div class="card question-card"><div class="qmeta" id="meta"></div><div class="statement" id="statement"></div><div class="confidence"><span>Confiança:</span><label><input type="radio" name="conf" value="Certeza" checked> Certeza</label><label><input type="radio" name="conf" value="Dúvida"> Dúvida</label><label><input type="radio" name="conf" value="Chute"> Chute</label></div>
-<div class="answer-buttons"><button id="certo" class="answer">CERTO</button><button id="errado" class="answer">ERRADO</button></div><div class="qactions"><span id="timer">0s</span></div><div id="feedback" class="feedback hidden"></div><button id="next" class="btn primary hidden">Próxima →</button></div></div>{% endblock %}
-{% block scripts %}<script>const Q={{questions|tojson}},mode={{mode|tojson}},examId={{exam_id}};let i=0,correct=0,start=Date.now(),sessionStart=Date.now(),answered=false;const el=id=>document.getElementById(id);
-function show(){answered=false;start=Date.now();let q=Q[i];el('progress').innerText=`Questão ${i+1} de ${Q.length}`;el('score').innerText=`${correct} acertos`;el('meta').innerText=`${q.subject_name||q.topic||'Sem tema'} • ${q.difficulty||'—'} • página ${q.page||'—'}`;el('statement').innerText=q.statement;el('feedback').classList.add('hidden');el('next').classList.add('hidden');el('certo').disabled=false;el('errado').disabled=false;}
-setInterval(()=>{if(!answered)el('timer').innerText=Math.round((Date.now()-start)/1000)+'s'},500);
-async function ans(choice){if(answered)return;answered=true;let conf=document.querySelector('input[name=conf]:checked').value,seconds=(Date.now()-start)/1000,q=Q[i];let r=await fetch('/answer',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({qid:q.db_id,choice,confidence:conf,seconds,mode})});let d=await r.json();if(d.correct)correct++;el('score').innerText=`${correct} acertos`;el('feedback').innerHTML=`<b class="${d.correct?'good':'bad'}">${d.correct?'✓ ACERTOU':'✕ ERROU'}</b><h3>Gabarito: ${d.answer}</h3><p>${d.explanation}</p><div class="basis"><b>Fundamento:</b> ${d.basis} • página ${d.page||'—'}</div>`;el('feedback').classList.remove('hidden');el('next').classList.remove('hidden');el('certo').disabled=true;el('errado').disabled=true;}
-el('certo').onclick=()=>ans('Certo');el('errado').onclick=()=>ans('Errado');el('next').onclick=async()=>{if(i+1<Q.length){i++;show()}else{await fetch('/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({exam_id:examId,mode,total:Q.length,correct,duration:(Date.now()-sessionStart)/1000})});location.href=`/exam/${examId}`;}};show();</script>{% endblock %}
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="quiz-shell">
+
+    <div class="quiz-top">
+        <div>
+            <div class="eyebrow">SESSÃO DE TREINO</div>
+            <h1 id="progress">Questão 1 de {{ questions|length }}</h1>
+        </div>
+
+        <div class="score" id="score">
+            0 acertos
+        </div>
+    </div>
+
+    <div class="card question-card">
+
+        <!-- PAINEL DE MEMÓRIA -->
+        <div class="memory-panel">
+
+            <div class="memory-main">
+
+                <div class="memory-icon">
+                    <svg viewBox="0 0 24 24"
+                         width="24"
+                         height="24"
+                         fill="none"
+                         stroke="currentColor"
+                         stroke-width="1.8">
+
+                        <path d="M9.5 4.5A3.5 3.5 0 0 0 6 8v1a3 3 0 0 0-2 2.8A3.2 3.2 0 0 0 7.2 15H8v1a3 3 0 0 0 3 3V5.5a3 3 0 0 0-1.5-1z"/>
+
+                        <path d="M14.5 4.5A3.5 3.5 0 0 1 18 8v1a3 3 0 0 1 2 2.8A3.2 3.2 0 0 1 16.8 15H16v1a3 3 0 0 1-3 3V5.5a3 3 0 0 1 1.5-1z"/>
+
+                    </svg>
+                </div>
+
+                <div>
+                    <div class="memory-caption">
+                        MEMÓRIA DA QUESTÃO
+                    </div>
+
+                    <div id="memory-label"
+                         class="memory-badge new">
+                        Nova
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="memory-stats">
+
+                <div class="memory-stat">
+                    <span>Acerto histórico</span>
+                    <strong id="memory-accuracy">0%</strong>
+                </div>
+
+                <div class="memory-stat">
+                    <span>Respostas</span>
+                    <strong id="memory-attempts">0</strong>
+                </div>
+
+                <div class="memory-stat">
+                    <span>Próxima revisão</span>
+                    <strong id="memory-due">
+                        Revisar agora
+                    </strong>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- PROGRESSO DE DOMÍNIO -->
+        <div class="memory-progress">
+
+            <div class="memory-progress-track">
+                <div id="memory-progress-fill"
+                     class="memory-progress-fill">
+                </div>
+            </div>
+
+            <div class="memory-progress-labels">
+                <span>Aprendendo</span>
+                <span>Consolidando</span>
+                <span>90%</span>
+                <span>95%</span>
+            </div>
+
+        </div>
+
+        <div class="qmeta" id="meta"></div>
+
+        <div class="statement" id="statement"></div>
+
+        <!-- CONFIANÇA -->
+        <div class="confidence">
+
+            <span>Qual sua confiança?</span>
+
+            <label>
+                <input type="radio"
+                       name="conf"
+                       value="Certeza"
+                       checked>
+                Certeza
+            </label>
+
+            <label>
+                <input type="radio"
+                       name="conf"
+                       value="Dúvida">
+                Dúvida
+            </label>
+
+            <label>
+                <input type="radio"
+                       name="conf"
+                       value="Chute">
+                Chute
+            </label>
+
+        </div>
+
+        <!-- RESPOSTAS -->
+        <div class="answer-buttons">
+
+            <button id="certo"
+                    class="answer answer-certo">
+
+                <svg viewBox="0 0 24 24"
+                     width="24"
+                     height="24"
+                     fill="none"
+                     stroke="currentColor"
+                     stroke-width="2.5">
+
+                    <path d="M5 12.5l4.5 4.5L19 7.5"/>
+
+                </svg>
+
+                CERTO
+            </button>
+
+
+            <button id="errado"
+                    class="answer answer-errado">
+
+                <svg viewBox="0 0 24 24"
+                     width="24"
+                     height="24"
+                     fill="none"
+                     stroke="currentColor"
+                     stroke-width="2.5">
+
+                    <path d="M6 6l12 12M18 6L6 18"/>
+
+                </svg>
+
+                ERRADO
+            </button>
+
+        </div>
+
+        <div class="qactions">
+            <span id="timer">0s</span>
+        </div>
+
+        <div id="feedback"
+             class="feedback hidden">
+        </div>
+
+        <button id="next"
+                class="btn primary hidden">
+
+            Próxima questão →
+
+        </button>
+
+    </div>
+
+</div>
+
+{% endblock %}
+
+
+{% block scripts %}
+
+<script>
+
+const Q = {{ questions|tojson }};
+const mode = {{ mode|tojson }};
+const examId = {{ exam_id }};
+
+let i = 0;
+let correct = 0;
+let start = Date.now();
+let sessionStart = Date.now();
+let answered = false;
+
+const el = id => document.getElementById(id);
+
+
+function memoryProgress(memoryClass) {
+
+    const levels = {
+        "new": 5,
+        "learning": 25,
+        "consolidating": 60,
+        "mastered90": 90,
+        "mastered95": 100
+    };
+
+    return levels[memoryClass] || 5;
+}
+
+
+function updateMemory(q) {
+
+    const label = el("memory-label");
+
+    label.innerText = q.memory_label || "Nova";
+
+    label.className =
+        "memory-badge " +
+        (q.memory_class || "new");
+
+    el("memory-accuracy").innerText =
+        `${q.memory_accuracy || 0}%`;
+
+    el("memory-attempts").innerText =
+        q.memory_attempts || 0;
+
+    el("memory-due").innerText =
+        q.memory_due_label || "Revisar agora";
+
+    el("memory-progress-fill").style.width =
+        `${memoryProgress(q.memory_class)}%`;
+}
+
+
+function show() {
+
+    answered = false;
+    start = Date.now();
+
+    const q = Q[i];
+
+    el("progress").innerText =
+        `Questão ${i + 1} de ${Q.length}`;
+
+    el("score").innerText =
+        `${correct} acertos`;
+
+    el("meta").innerText =
+        `${q.subject_name || q.topic || "Sem tema"} • ` +
+        `${q.difficulty || "—"} • ` +
+        `página ${q.page || "—"}`;
+
+    el("statement").innerText =
+        q.statement;
+
+    updateMemory(q);
+
+    el("feedback").classList.add("hidden");
+    el("next").classList.add("hidden");
+
+    el("certo").disabled = false;
+    el("errado").disabled = false;
+
+    el("timer").innerText = "0s";
+}
+
+
+setInterval(() => {
+
+    if (!answered) {
+
+        el("timer").innerText =
+            Math.round(
+                (Date.now() - start) / 1000
+            ) + "s";
+    }
+
+}, 500);
+
+
+async function ans(choice) {
+
+    if (answered)
+        return;
+
+    answered = true;
+
+    const conf =
+        document.querySelector(
+            'input[name="conf"]:checked'
+        ).value;
+
+    const seconds =
+        (Date.now() - start) / 1000;
+
+    const q = Q[i];
+
+    const response =
+        await fetch("/answer", {
+
+            method: "POST",
+
+            headers: {
+                "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify({
+
+                qid: q.db_id,
+                choice: choice,
+                confidence: conf,
+                seconds: seconds,
+                mode: mode
+
+            })
+
+        });
+
+
+    const d = await response.json();
+
+
+    if (d.correct)
+        correct++;
+
+
+    el("score").innerText =
+        `${correct} acertos`;
+
+
+    el("feedback").innerHTML = `
+
+        <div class="feedback-result ${d.correct ? "good" : "bad"}">
+
+            ${d.correct
+                ? "✓ VOCÊ ACERTOU"
+                : "✕ VOCÊ ERROU"}
+
+        </div>
+
+        <h3>
+            Gabarito: ${d.answer}
+        </h3>
+
+        <p>
+            ${d.explanation}
+        </p>
+
+        <div class="basis">
+
+            <b>Fundamento:</b>
+            ${d.basis}
+
+            ${d.page
+                ? ` • página ${d.page}`
+                : ""}
+
+        </div>
+
+    `;
+
+
+    el("feedback").classList.remove("hidden");
+
+    el("next").classList.remove("hidden");
+
+    el("certo").disabled = true;
+    el("errado").disabled = true;
+
+
+    /* ATUALIZA A MEMÓRIA IMEDIATAMENTE */
+
+    if (d.memory) {
+
+        q.memory_label =
+            d.memory.memory_label;
+
+        q.memory_class =
+            d.memory.memory_class;
+
+        q.memory_accuracy =
+            d.memory.accuracy;
+
+        q.memory_attempts =
+            d.memory.attempts;
+
+        q.memory_due_label =
+            d.memory.due_label;
+
+        updateMemory(q);
+
+    }
+
+}
+
+
+el("certo").onclick =
+    () => ans("Certo");
+
+
+el("errado").onclick =
+    () => ans("Errado");
+
+
+el("next").onclick =
+    async () => {
+
+        if (i + 1 < Q.length) {
+
+            i++;
+
+            show();
+
+        } else {
+
+            await fetch("/session", {
+
+                method: "POST",
+
+                headers: {
+                    "Content-Type":
+                        "application/json"
+                },
+
+                body: JSON.stringify({
+
+                    exam_id: examId,
+                    mode: mode,
+                    total: Q.length,
+                    correct: correct,
+
+                    duration:
+                        (Date.now() -
+                            sessionStart) / 1000
+
+                })
+
+            });
+
+            location.href =
+                `/exam/${examId}`;
+
+        }
+
+    };
+
+
+show();
+
+</script>
+
+{% endblock %}
