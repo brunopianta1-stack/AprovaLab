@@ -12,7 +12,7 @@
 {% set current_exam_id = exam.id if exam is defined and exam else (exam_id if exam_id is defined else none) %}
 <aside class="sidebar" id="sidebar">
   <a class="brand" href="{{url_for('exam_dashboard',exam_id=current_exam_id) if current_exam_id else url_for('home')}}">
-    <span class="brand-brain" aria-hidden="true">◉</span>
+    <span class="brand-brain" aria-hidden="true"><svg viewBox="0 0 64 64"><path d="M32 7c-7 0-12 5-12 12-6 1-10 6-10 12 0 5 3 9 7 11-1 8 5 15 13 15h4c8 0 14-7 13-15 4-2 7-6 7-11 0-6-4-11-10-12 0-7-5-12-12-12Z"/><path d="M32 12v40M23 21c5 1 9 5 9 10M41 21c-5 1-9 5-9 10M22 39c5-1 10 2 10 7M42 39c-5-1-10 2-10 7"/></svg></span>
     <span><strong>Aprova<em>Lab</em></strong><small>DISCIPLINA · MÉTODO · EVOLUÇÃO</small></span>
   </a>
   <nav class="main-nav" aria-label="Navegação principal">
@@ -30,14 +30,15 @@
     {% endif %}
   </nav>
   <blockquote><b>“</b>DISCIPLINA<br>HOJE,<br>LIBERDADE<br>SEMPRE.”</blockquote>
+  <div class="sidebar-art" aria-hidden="true"></div>
   <div class="sidebar-foot"><strong>AprovaLab v1.0</strong><span>Seu futuro em construção.</span></div>
 </aside>
 <button class="menu-toggle" type="button" aria-label="Abrir menu" onclick="document.body.classList.toggle('menu-open')">☰</button>
 <main class="app-main">
-  <header class="topbar"><div>{% if exam is defined and exam %}<span class="current-project">{{exam.name}} · {{exam.board}}</span>{% endif %}</div><div class="student"><span>●</span> Aluno <b>⌄</b></div></header>
+  <header class="topbar"><div>{% if exam is defined and exam %}<span class="current-project">{{exam.name}} · {{exam.board}}</span>{% endif %}</div><a class="student" href="{{url_for('settings',exam_id=current_exam_id) if current_exam_id else url_for('home')}}"><span>●</span> Aluno <b>⌄</b></a></header>
   {% with messages=get_flashed_messages(with_categories=true) %}{% for cat,msg in messages %}<div class="flash {{cat}}">{{msg}}</div>{% endfor %}{% endwith %}
   {% block content %}{% endblock %}
-  <footer class="app-footer"><span></span><strong>“GRANDES CONQUISTAS EXIGEM MÉTODO, CONSTÂNCIA E PROPÓSITO.”</strong><span></span></footer>
+  <footer class="app-footer"><span></span><strong>“GRANDES CONQUISTAS EXIGEM MÉTODO, CONSTÂNCIA E PROPÓSITO.”</strong><span></span><b>Aprova<em>Lab</em><small>MAIS QUE ESTUDO.<br>UMA MISSÃO.</small></b></footer>
 </main>
 {% block scripts %}{% endblock %}
 <script>document.addEventListener('click',e=>{if(document.body.classList.contains('menu-open')&&!e.target.closest('.sidebar')&&!e.target.closest('.menu-toggle'))document.body.classList.remove('menu-open')});</script>
