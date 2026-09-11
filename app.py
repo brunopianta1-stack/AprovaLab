@@ -538,6 +538,18 @@ def quiz(exam_id,mode):
     if not qs:
         flash("Não há questões disponíveis para este modo.","error")
         return redirect(url_for("exam_dashboard",exam_id=exam_id))
+            c = conn()
+
+    for q in qs:
+        memory = memory_snapshot(c, q["db_id"])
+
+        q["memory_label"] = memory["memory_label"]
+        q["memory_class"] = memory["memory_class"]
+        q["memory_accuracy"] = memory["accuracy"]
+        q["memory_attempts"] = memory["attempts"]
+        q["memory_due_label"] = memory["due_label"]
+
+    c.close()
     random.shuffle(qs)
     return render_template("quiz.html",questions=qs,mode=mode,exam_id=exam_id)
 
