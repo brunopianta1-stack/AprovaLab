@@ -541,13 +541,7 @@ def quiz(exam_id,mode):
     random.shuffle(qs)
     return render_template("quiz.html",questions=qs,mode=mode,exam_id=exam_id)
 
-@app.route("/answer",methods=["POST"])
-def answer():
-    data=request.get_json()
-    qid=int(data["qid"])
-    ok=record_review(qid,data["choice"],data["confidence"],float(data.get("seconds",0)),data.get("mode",""))
-    c=conn(); q=c.execute("SELECT * FROM questions WHERE id=?",(qid,)).fetchone(); c.close()
-    return jsonify({"correct":ok,"answer":q["answer"],"explanation":q["explanation"],"basis":q["basis"],"page":q["page"]})
+
 
 @app.route("/session",methods=["POST"])
 def session():
