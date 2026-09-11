@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="eyebrow">{{ subject.name }}</div>
+<h1>Importar questões gratuitamente</h1>
+<p class="lead">
+  Adicione questões prontas sem usar API. Cole o conteúdo no formato abaixo ou envie um arquivo JSON, CSV ou XLSX.
+</p>
+
+<section class="card form-card">
+  <form method="post" enctype="multipart/form-data">
+    <label for="manual_text">Colar questões</label>
+    <textarea
+      id="manual_text"
+      name="manual_text"
+      rows="18"
+      placeholder="Afirmação: O crime de tortura é inafiançável e insuscetível de graça ou anistia.&#10;Gabarito: Certo&#10;Explicação: A afirmação reproduz o tratamento constitucional dado ao crime de tortura.&#10;Fundamento: Constituição Federal, art. 5º, XLIII.&#10;Página: 1&#10;Tópico: Disposições constitucionais&#10;Dificuldade: Média&#10;&#10;---&#10;&#10;Afirmação: A condenação por tortura acarreta automaticamente pena de caráter perpétuo.&#10;Gabarito: Errado&#10;Explicação: A Constituição Federal proíbe penas de caráter perpétuo.&#10;Fundamento: Constituição Federal, art. 5º, XLVII, b.&#10;Tópico: Penas vedadas&#10;Dificuldade: Fácil"
+    ></textarea>
+
+    <p class="lead">
+      Separe cada questão com uma linha contendo <strong>---</strong>. Os campos obrigatórios são
+      <strong>Afirmação</strong> e <strong>Gabarito</strong>; use “Certo” ou “Errado”.
+    </p>
+
+    <div class="motto-line" aria-hidden="true">
+      <span></span><strong>OU</strong><span></span>
+    </div>
+
+    <label for="question_file">Enviar arquivo</label>
+    <input id="question_file" type="file" name="question_file" accept=".json,.csv,.xlsx">
+    <p class="lead">
+      A primeira linha de CSV ou XLSX deve usar colunas como:
+      afirmação, gabarito, explicação, fundamento, página, tópico e dificuldade.
+      No JSON, envie uma lista ou um objeto com a chave <strong>questions</strong>.
+    </p>
+
+    <button class="btn primary wide" type="submit">Importar e começar treino</button>
+  </form>
+</section>
+{% endblock %}

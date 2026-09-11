@@ -3,4 +3,5 @@
 <div class="subject-grid">{% for s in rows %}<section class="card subject"><small>PESO {{s.weight}}</small><h2>{{s.name}}</h2><p>{{s.docs}} PDFs • {{s.questions}} questões • meta {{s.target_accuracy}}%</p>
 <form action="{{url_for('upload_subject_pdf',exam_id=exam.id,subject_id=s.id)}}" method="post" enctype="multipart/form-data"><input type="file" name="pdf" accept=".pdf" required><button class="btn">Adicionar PDF</button></form>
 <a class="btn primary" href="{{url_for('generate_subject',exam_id=exam.id,subject_id=s.id)}}">Gerar questões</a>
+<a class="btn" href="{{url_for('manual_import.import_subject',exam_id=exam.id,subject_id=s.id)}}">Importar gratuitamente</a>
 <a class="btn" href="{{url_for('quiz',exam_id=exam.id,mode='subject',subject_id=s.id)}}">Treinar matéria</a></section>{% endfor %}</div>{% endblock %}

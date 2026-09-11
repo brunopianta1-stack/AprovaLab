@@ -6,6 +6,7 @@ from werkzeug.utils import secure_filename
 from pypdf import PdfReader
 from openai import OpenAI
 from spaced_repetition import next_review, memory_snapshot
+from manual_import import manual_import_bp
 BASE = Path(__file__).resolve().parent
 
 # Arquivos internos do aplicativo permanecem na pasta de instalação.
@@ -25,6 +26,7 @@ DB = DATA_DIR / "aprovallab_v5.db"
 
 app = Flask(__name__)
 app.secret_key = "aprovallab-local-v5"
+app.register_blueprint(manual_import_bp)
 
 def conn():
     c = sqlite3.connect(DB)
@@ -356,6 +358,28 @@ def home():
     c=conn(); exams=c.execute("SELECT * FROM exams ORDER BY created_at DESC").fetchall(); c.close()
     return render_template("home.html",exams=exams)
 
+@app.route("/exam/new",methods=["GET","POST"])
+def exam_new():
+    if request.method=="POST":
+        c=conn()
+        try:
+            name=request.form["name"].strip()
+            if not name:
+                raise ValueError("Informe o nome do concurso.")
+            c.execute("""INSERT INTO exams(name,institution,board,target_date,description,created_at)
+                         VALUES(?,?,?,?,?,?)""",
+                      (name,request.form.get("institution","").strip(),
+                       request.form.get("board","CEBRASPE").strip(),request.form.get("target_date",""),
+                       request.form.get("description","").strip(),datetime.now().isoformat()))
+            c.commit()
+            eid=c.execute("SELECT id FROM exams WHERE name=?",(name,)).fetchone()["id"]
+            c.close()
+            return redirect(url_for("exam_dashboard",exam_id=eid))
+        except Exception as e:
+            c.close()
+            flash(str(e),"error")
+    return render_template("exam_new.html")
+
 @app.route("/answer", methods=["POST"])
 def answer():
     data = request.get_json()
@@ -538,7 +562,8 @@ def quiz(exam_id,mode):
     if not qs:
         flash("Não há questões disponíveis para este modo.","error")
         return redirect(url_for("exam_dashboard",exam_id=exam_id))
-            c = conn()
+
+    c = conn()
 
     for q in qs:
         memory = memory_snapshot(c, q["db_id"])
