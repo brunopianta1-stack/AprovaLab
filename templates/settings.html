@@ -1,4 +1,12 @@
 {% extends "base.html" %}{% block title %}Configurações · AprovaLab{% endblock %}{% block content %}
-<div class="page-heading"><div><div class="eyebrow">PROJETO</div><h1>Configurações</h1><p class="lead">Atualize os dados que identificam seu objetivo de aprovação.</p></div></div>
-<section class="panel form-card"><form method="post"><label>Nome do concurso<input name="name" value="{{exam.name}}" required></label><div class="form-row"><label>Instituição<input name="institution" value="{{exam.institution}}"></label><label>Banca<input name="board" value="{{exam.board}}"></label></div><label>Data-alvo<input type="date" name="target_date" value="{{exam.target_date}}"></label><label>Descrição<textarea name="description" rows="5">{{exam.description}}</textarea></label><button class="btn primary">Salvar configurações</button></form></section>
+<div class="page-heading"><div><div class="eyebrow">PROJETO E AGENDAMENTO</div><h1>Configurações</h1><p class="lead">Defina sua meta e uma carga sustentável de estudos.</p></div></div>
+<section class="panel form-card"><form method="post">
+<label>Nome do concurso<input name="name" value="{{exam.name}}" required></label>
+<div class="form-row"><label>Instituição<input name="institution" value="{{exam.institution}}"></label><label>Banca<input name="board" value="{{exam.board}}"></label></div>
+<label>Data-alvo<input type="date" name="target_date" value="{{exam.target_date}}"></label>
+<label>Descrição<textarea name="description" rows="4">{{exam.description}}</textarea></label>
+<div class="panel-title"><span class="panel-icon">◷</span><div><h2>Carga diária</h2><p>Os limites evitam sobrecarga e podem ser alterados a qualquer momento.</p></div></div>
+<div class="form-row"><label>Novos cartões por dia<input type="number" min="1" max="500" name="new_cards_per_day" value="{{exam.new_cards_per_day or 20}}"></label><label>Revisões máximas por dia<input type="number" min="1" max="2000" name="reviews_per_day" value="{{exam.reviews_per_day or 100}}"></label></div>
+<label>Suspender sanguessuga após quantos erros?<input type="number" min="2" max="50" name="leech_threshold" value="{{exam.leech_threshold or 8}}"><small>O cartão será separado para você corrigir seu conteúdo.</small></label>
+<button class="btn primary">Salvar configurações</button></form></section>
 {% endblock %}

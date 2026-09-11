@@ -133,6 +133,19 @@ def init_db():
     );
     """)
 
+    migrations = {
+        "exams": [("new_cards_per_day", "INTEGER DEFAULT 20"), ("reviews_per_day", "INTEGER DEFAULT 100"), ("leech_threshold", "INTEGER DEFAULT 8")],
+        "subjects": [("parent_id", "INTEGER")],
+        "reviews": [("rating", "TEXT DEFAULT ''")],
+        "schedule": [("state", "TEXT DEFAULT 'new'"), ("stability", "REAL DEFAULT 0.4"), ("difficulty_score", "REAL DEFAULT 5"), ("suspended", "INTEGER DEFAULT 0")],
+    }
+    for table, columns in migrations.items():
+        present = {row["name"] for row in c.execute(f"PRAGMA table_info({table})")}
+        for name, definition in columns:
+            if name not in present:
+                c.execute(f"ALTER TABLE {table} ADD COLUMN {name} {definition}")
+    c.execute("UPDATE schedule SET state='review' WHERE repetitions>0 AND state='new'")
+
     c.execute("""
       INSERT OR IGNORE INTO notebooks(name,description,created_at)
       VALUES(?,?,?)
@@ -153,13 +166,13 @@ def summary(exam_id=None):
         questions = scalar("""SELECT COUNT(*) FROM questions q JOIN subjects s ON s.id=q.subject_id WHERE s.exam_id=?""",(exam_id,))
         reviews = scalar("""SELECT COUNT(*) FROM reviews r JOIN questions q ON q.id=r.question_id JOIN subjects s ON s.id=q.subject_id WHERE s.exam_id=?""",(exam_id,))
         correct = scalar("""SELECT COUNT(*) FROM reviews r JOIN questions q ON q.id=r.question_id JOIN subjects s ON s.id=q.subject_id WHERE s.exam_id=? AND r.correct=1""",(exam_id,))
-        due = scalar("""SELECT COUNT(*) FROM schedule sc JOIN questions q ON q.id=sc.question_id JOIN subjects s ON s.id=q.subject_id WHERE s.exam_id=? AND sc.due_at<=?""",(exam_id,datetime.now().isoformat()))
+        due = scalar("""SELECT COUNT(*) FROM schedule sc JOIN questions q ON q.id=sc.question_id JOIN subjects s ON s.id=q.subject_id WHERE s.exam_id=? AND sc.due_at<=? AND COALESCE(sc.suspended,0)=0""",(exam_id,datetime.now().isoformat()))
         subjects = scalar("SELECT COUNT(*) FROM subjects WHERE exam_id=?",(exam_id,))
     else:
         questions=scalar("SELECT COUNT(*) FROM questions")
         reviews=scalar("SELECT COUNT(*) FROM reviews")
         correct=scalar("SELECT COUNT(*) FROM reviews WHERE correct=1")
-        due=scalar("SELECT COUNT(*) FROM schedule WHERE due_at<=?",(datetime.now().isoformat(),))
+        due=scalar("SELECT COUNT(*) FROM schedule WHERE due_at<=? AND COALESCE(suspended,0)=0",(datetime.now().isoformat(),))
         subjects=scalar("SELECT COUNT(*) FROM subjects")
     return {
         "questions":questions,
@@ -255,7 +268,7 @@ def select_questions(mode,limit=20,exam_id=None,subject_id=None):
         sql=f"""SELECT q.* FROM questions q
                 JOIN subjects s ON s.id=q.subject_id
                 JOIN schedule sc ON sc.question_id=q.id
-                {wf + (' AND ' if wf else ' WHERE ') + 'sc.due_at<=?'}
+                {wf + (' AND ' if wf else ' WHERE ') + 'sc.due_at<=? AND COALESCE(sc.suspended,0)=0'}
                 ORDER BY sc.due_at ASC, sc.lapses DESC LIMIT ?"""
         rows=c.execute(sql,tuple(params+[datetime.now().isoformat(),limit])).fetchall()
     elif mode=="errors":
@@ -341,17 +354,10 @@ def record_review(qid, choice, confidence, seconds, mode):
         now.isoformat()
     ))
 
-    memory = next_review(
-        c,
-        qid,
-        ok,
-        confidence
-    )
-
     c.commit()
+    review_id = c.execute("SELECT last_insert_rowid()").fetchone()[0]
     c.close()
-
-    return ok, memory
+    return ok, review_id
 
 @app.route("/")
 def home():
@@ -386,7 +392,7 @@ def answer():
 
     qid = int(data["qid"])
 
-    ok, memory = record_review(
+    ok, review_id = record_review(
         qid,
         data["choice"],
         data["confidence"],
@@ -407,8 +413,28 @@ def answer():
         "explanation": q["explanation"],
         "basis": q["basis"],
         "page": q["page"],
-        "memory": memory
+        "review_id": review_id
     })
+
+@app.route("/rate", methods=["POST"])
+def rate_review():
+    data=request.get_json() or {}
+    review_id=int(data.get("review_id",0)); rating=data.get("rating","")
+    c=conn()
+    row=c.execute("""SELECT r.question_id,r.rating,s.exam_id FROM reviews r JOIN questions q ON q.id=r.question_id
+                      JOIN subjects s ON s.id=q.subject_id WHERE r.id=?""",(review_id,)).fetchone()
+    if not row:
+        c.close(); return jsonify({"error":"Revisão não encontrada."}),404
+    exam=c.execute("SELECT leech_threshold FROM exams WHERE id=?",(row["exam_id"],)).fetchone()
+    try:
+        if row["rating"]:
+            memory=memory_snapshot(c,row["question_id"]); c.close()
+            return jsonify({"ok":True,"memory":memory})
+        c.execute("UPDATE reviews SET rating=? WHERE id=?",(rating,review_id))
+        memory=next_review(c,row["question_id"],rating,int(exam["leech_threshold"] or 8))
+        c.commit(); c.close(); return jsonify({"ok":True,"memory":memory})
+    except ValueError as e:
+        c.close(); return jsonify({"error":str(e)}),400
 
 @app.route("/exam/<int:exam_id>")
 def exam_dashboard(exam_id):
@@ -483,10 +509,34 @@ def statistics(exam_id):
     exam=c.execute("SELECT * FROM exams WHERE id=?",(exam_id,)).fetchone()
     sessions=c.execute("""SELECT * FROM sessions WHERE exam_id=?
                          ORDER BY created_at DESC LIMIT 12""",(exam_id,)).fetchall()
+    retention=c.execute("""SELECT substr(r.reviewed_at,1,10) day,COUNT(*) total,SUM(r.correct) correct
+                            FROM reviews r JOIN questions q ON q.id=r.question_id JOIN subjects s ON s.id=q.subject_id
+                            WHERE s.exam_id=? GROUP BY day ORDER BY day DESC LIMIT 30""",(exam_id,)).fetchall()
+    maturity=c.execute("""SELECT SUM(CASE WHEN COALESCE(sc.state,'new') IN ('new','learning','relearning') THEN 1 ELSE 0 END) learning,
+                           SUM(CASE WHEN sc.state='review' AND sc.interval_days<21 THEN 1 ELSE 0 END) young,
+                           SUM(CASE WHEN sc.state='review' AND sc.interval_days>=21 THEN 1 ELSE 0 END) mature,
+                           SUM(CASE WHEN COALESCE(sc.suspended,0)=1 THEN 1 ELSE 0 END) leeches
+                           FROM questions q JOIN subjects s ON s.id=q.subject_id LEFT JOIN schedule sc ON sc.question_id=q.id WHERE s.exam_id=?""",(exam_id,)).fetchone()
+    forecast=[]
+    for offset in range(14):
+        day=(datetime.now()+timedelta(days=offset)).date().isoformat()
+        count=c.execute("""SELECT COUNT(*) FROM schedule sc JOIN questions q ON q.id=sc.question_id JOIN subjects s ON s.id=q.subject_id
+                           WHERE s.exam_id=? AND substr(sc.due_at,1,10)=? AND COALESCE(sc.suspended,0)=0""",(exam_id,day)).fetchone()[0]
+        forecast.append({"label":datetime.fromisoformat(day).strftime("%d/%m"),"value":count})
     c.close()
     stats=exam_subject_stats(exam_id)
-    return render_template("statistics.html",exam=exam,s=summary(exam_id),stats=stats,
-                           sessions=sessions,chart=[{"label":x["name"],"value":x["accuracy"]} for x in stats])
+    return render_template("statistics.html",exam=exam,s=summary(exam_id),stats=stats,sessions=sessions,
+                           chart=[{"label":x["name"],"value":x["accuracy"]} for x in stats],
+                           retention=[{"label":x["day"][5:],"value":round(100*x["correct"]/x["total"])} for x in reversed(retention)],
+                           maturity=dict(maturity),forecast=forecast)
+
+@app.route("/exam/<int:exam_id>/leeches", methods=["POST"])
+def restore_leeches(exam_id):
+    c=conn(); c.execute("""UPDATE schedule SET suspended=0,lapses=0,state='relearning',due_at=? WHERE question_id IN
+                           (SELECT q.id FROM questions q JOIN subjects s ON s.id=q.subject_id WHERE s.exam_id=?)""",
+                        (datetime.now().isoformat(),exam_id))
+    c.commit(); c.close(); flash("Cartões sanguessuga reativados para reaprendizado.","ok")
+    return redirect(url_for("statistics",exam_id=exam_id))
 
 @app.route("/exam/<int:exam_id>/import")
 def import_hub(exam_id):
@@ -507,10 +557,13 @@ def settings(exam_id):
             name=request.form.get("name","").strip()
             if not name:
                 raise ValueError("Informe o nome do concurso.")
-            c.execute("""UPDATE exams SET name=?,institution=?,board=?,target_date=?,description=?
+            c.execute("""UPDATE exams SET name=?,institution=?,board=?,target_date=?,description=?,new_cards_per_day=?,reviews_per_day=?,leech_threshold=?
                          WHERE id=?""",(name,request.form.get("institution","").strip(),
                          request.form.get("board","").strip(),request.form.get("target_date",""),
-                         request.form.get("description","").strip(),exam_id))
+                         request.form.get("description","").strip(),
+                         max(1,int(request.form.get("new_cards_per_day",20))),
+                         max(1,int(request.form.get("reviews_per_day",100))),
+                         max(2,int(request.form.get("leech_threshold",8))),exam_id))
             c.commit()
             flash("Configurações atualizadas.","ok")
             exam=c.execute("SELECT * FROM exams WHERE id=?",(exam_id,)).fetchone()
@@ -525,16 +578,17 @@ def subjects(exam_id):
     exam=c.execute("SELECT * FROM exams WHERE id=?",(exam_id,)).fetchone()
     if request.method=="POST":
         try:
-            c.execute("""INSERT INTO subjects(exam_id,name,weight,target_accuracy,created_at)
-                         VALUES(?,?,?,?,?)""",(exam_id,request.form["name"].strip(),
+            c.execute("""INSERT INTO subjects(exam_id,name,weight,target_accuracy,parent_id,created_at)
+                         VALUES(?,?,?,?,?,?)""",(exam_id,request.form["name"].strip(),
                          float(request.form.get("weight",1)),float(request.form.get("target_accuracy",80)),
-                         datetime.now().isoformat()))
+                         request.form.get("parent_id",type=int),datetime.now().isoformat()))
             c.commit(); flash("Disciplina criada.","ok")
         except Exception as e: flash(str(e),"error")
-    rows=c.execute("""SELECT s.*,COUNT(DISTINCT d.id) docs,COUNT(DISTINCT q.id) questions
+    rows=c.execute("""SELECT s.*,p.name parent_name,COUNT(DISTINCT d.id) docs,COUNT(DISTINCT q.id) questions
                       FROM subjects s LEFT JOIN documents d ON d.subject_id=s.id
                       LEFT JOIN questions q ON q.subject_id=s.id
-                      WHERE s.exam_id=? GROUP BY s.id ORDER BY s.name""",(exam_id,)).fetchall()
+                      LEFT JOIN subjects p ON p.id=s.parent_id
+                      WHERE s.exam_id=? GROUP BY s.id ORDER BY COALESCE(p.name,s.name),s.parent_id,s.name""",(exam_id,)).fetchall()
     c.close()
     return render_template("subjects.html",exam=exam,rows=rows)
 
@@ -643,6 +697,17 @@ def study_cycle(exam_id):
 def quiz(exam_id,mode):
     ids=request.args.get("ids","")
     subject_id=request.args.get("subject_id",type=int)
+    c=conn()
+    limits=c.execute("SELECT new_cards_per_day,reviews_per_day FROM exams WHERE id=?",(exam_id,)).fetchone()
+    today=datetime.now().date().isoformat()
+    reviewed_today=c.execute("""SELECT COUNT(*) FROM reviews r JOIN questions q ON q.id=r.question_id JOIN subjects s ON s.id=q.subject_id
+                                WHERE s.exam_id=? AND substr(r.reviewed_at,1,10)=?""",(exam_id,today)).fetchone()[0]
+    c.close()
+    daily_review_limit=max(0,int(limits["reviews_per_day"] or 100)-reviewed_today) if limits else 20
+    new_seen_today=scalar("""SELECT COUNT(DISTINCT r.question_id) FROM reviews r JOIN questions q ON q.id=r.question_id
+                             JOIN subjects s ON s.id=q.subject_id WHERE s.exam_id=? AND substr(r.reviewed_at,1,10)=?
+                             AND NOT EXISTS(SELECT 1 FROM reviews old WHERE old.question_id=r.question_id AND old.reviewed_at<r.reviewed_at)""",(exam_id,today))
+    available_new=max(0,int(limits["new_cards_per_day"] or 20)-new_seen_today) if limits else 20
     if mode=="ids":
         wanted=[int(x) for x in ids.split(",") if x.isdigit()]
         if wanted:
@@ -653,9 +718,9 @@ def quiz(exam_id,mode):
             c.close(); qs=[qdict(r) for r in rows]
         else: qs=[]
     elif mode=="subject":
-        qs=select_questions("subject",100,exam_id,subject_id)
+        qs=select_questions("subject",min(100,max(1,daily_review_limit)),exam_id,subject_id)
     else:
-        qs=select_questions(mode,20,exam_id)
+        qs=select_questions(mode,min(20,max(1,daily_review_limit)),exam_id)
     if not qs:
         flash("Não há questões disponíveis para este modo.","error")
         return redirect(url_for("exam_dashboard",exam_id=exam_id))
@@ -672,6 +737,17 @@ def quiz(exam_id,mode):
         q["memory_due_label"] = memory["due_label"]
 
     c.close()
+    if mode != "ids":
+        kept=[]; new_count=0
+        for q in qs:
+            if q["memory_class"] == "new":
+                if new_count >= available_new: continue
+                new_count += 1
+            kept.append(q)
+        qs=kept
+    if not qs:
+        flash("Você atingiu o limite diário configurado. Ajuste-o em Configurações se desejar continuar.","ok")
+        return redirect(url_for("exam_dashboard",exam_id=exam_id))
     random.shuffle(qs)
     return render_template("quiz.html",questions=qs,mode=mode,exam_id=exam_id)
 

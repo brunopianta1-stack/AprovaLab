@@ -172,6 +172,16 @@
              class="feedback hidden">
         </div>
 
+        <div id="rating-box" class="rating-box hidden">
+            <span>Como foi lembrar desta questão?</span>
+            <div class="rating-buttons">
+                <button data-rating="again" class="rate again">Novamente <small>1 min</small></button>
+                <button data-rating="hard" class="rate hard">Difícil <small>6 min</small></button>
+                <button data-rating="good" class="rate good">Bom <small>10 min / dias</small></button>
+                <button data-rating="easy" class="rate easy">Fácil <small>intervalo maior</small></button>
+            </div>
+        </div>
+
         <button id="next"
                 class="btn primary hidden">
 
@@ -199,6 +209,7 @@ let correct = 0;
 let start = Date.now();
 let sessionStart = Date.now();
 let answered = false;
+let reviewId = null;
 
 const el = id => document.getElementById(id);
 
@@ -265,6 +276,8 @@ function show() {
     updateMemory(q);
 
     el("feedback").classList.add("hidden");
+    el("rating-box").classList.add("hidden");
+    document.querySelectorAll(".rate").forEach(x => { x.disabled=false; x.classList.remove("selected"); });
     el("next").classList.add("hidden");
 
     el("certo").disabled = false;
@@ -371,36 +384,29 @@ async function ans(choice) {
 
     el("feedback").classList.remove("hidden");
 
-    el("next").classList.remove("hidden");
+    reviewId = d.review_id;
+    el("rating-box").classList.remove("hidden");
 
     el("certo").disabled = true;
     el("errado").disabled = true;
 
 
-    /* ATUALIZA A MEMÓRIA IMEDIATAMENTE */
-
-    if (d.memory) {
-
-        q.memory_label =
-            d.memory.memory_label;
-
-        q.memory_class =
-            d.memory.memory_class;
-
-        q.memory_accuracy =
-            d.memory.accuracy;
-
-        q.memory_attempts =
-            d.memory.attempts;
-
-        q.memory_due_label =
-            d.memory.due_label;
-
-        updateMemory(q);
-
-    }
-
 }
+
+document.querySelectorAll(".rate").forEach(button => button.onclick = async () => {
+    if (!reviewId) return;
+    document.querySelectorAll(".rate").forEach(x => x.disabled = true);
+    const response = await fetch("/rate", {method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({review_id:reviewId,rating:button.dataset.rating})});
+    const d = await response.json();
+    if (d.memory) {
+        const q=Q[i]; q.memory_label=d.memory.memory_label; q.memory_class=d.memory.memory_class;
+        q.memory_accuracy=d.memory.accuracy; q.memory_attempts=d.memory.attempts; q.memory_due_label=d.memory.due_label;
+        updateMemory(q);
+    }
+    button.classList.add("selected");
+    el("next").classList.remove("hidden");
+});
 
 
 el("certo").onclick =
