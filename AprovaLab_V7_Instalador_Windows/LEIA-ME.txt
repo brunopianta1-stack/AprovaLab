@@ -1,0 +1,72 @@
+APROVALAB V5 — MODO CONCURSO COMPLETO
+
+A V5 introduz uma camada acima das questões: o CONCURSO.
+
+EXEMPLO
+PRF 2027
+  ├─ Português
+  ├─ Direito Penal
+  ├─ Processo Penal
+  ├─ Direito Administrativo
+  ├─ Constitucional
+  ├─ Legislação Especial
+  ├─ Informática
+  └─ ...
+
+Cada disciplina pode ter:
+- peso;
+- meta de acerto;
+- vários PDFs;
+- banco de questões próprio;
+- desempenho próprio;
+- revisões próprias.
+
+NOVIDADES DA V5
+---------------
+• Cadastro de concursos.
+• Cadastro de disciplinas por edital.
+• Peso por disciplina.
+• Meta de acerto por matéria.
+• Múltiplos PDFs por disciplina.
+• Geração de questões por matéria.
+• Simulado misto proporcional aos pesos.
+• Mapa de domínio do edital.
+• Ciclo de estudo recomendado automaticamente.
+• Prioridade baseada em:
+  - lacuna para a meta;
+  - taxa de erro;
+  - peso da disciplina;
+  - revisões vencidas;
+  - ausência de dados.
+• Revisão adaptativa dentro do concurso.
+• Revisão vencida dentro do concurso.
+• Banco local SQLite.
+
+INSTALAÇÃO
+----------
+1. Execute INSTALAR.bat
+2. Execute INICIAR.bat
+3. Abra http://127.0.0.1:5050
+
+FLUXO RECOMENDADO
+-----------------
+1. Crie “PRF 2027”.
+2. Cadastre as disciplinas do edital.
+3. Ajuste peso e meta de acerto.
+4. Adicione PDFs em cada matéria.
+5. Gere questões por disciplina.
+6. Faça um diagnóstico inicial.
+7. Consulte o mapa de domínio.
+8. Use o ciclo recomendado.
+9. Faça simulados mistos.
+10. Recalibre o ciclo semanalmente.
+
+OBSERVAÇÃO
+----------
+A V5 não busca automaticamente o edital na internet. O usuário cadastra a
+estrutura e os pesos desejados. Isso evita que o programa trate como oficial
+uma estrutura não confirmada.
+
+BANCO
+-----
+O histórico fica no arquivo aprovallab_v5.db.

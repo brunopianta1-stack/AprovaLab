@@ -1,0 +1,2 @@
+{% extends "base.html" %}{% block content %}<div class="eyebrow">SIMULADO</div><h1>Simulado de {{exam.name}}</h1><p class="lead">Distribuição automática de questões conforme o peso cadastrado das disciplinas.</p>
+<section class="card form-card"><form method="post"><label>Total de questões<input type="number" name="total" min="10" max="200" value="50"></label><button class="btn primary">Montar simulado misto</button></form></section>{% endblock %}

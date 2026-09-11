@@ -1,0 +1,6 @@
+{% extends "base.html" %}{% block content %}<div class="eyebrow">{{subject.name}}</div><h1>Gerar questões</h1><p class="lead">Selecione um ou mais PDFs desta disciplina.</p>
+<section class="card form-card"><form method="post"><label>Fontes</label><div class="doc-list">{% for d in docs %}<label><input type="checkbox" name="doc_ids" value="{{d.id}}"> {{d.name}} <span>{{d.pages}} pág.</span></label>{% else %}<p>Nenhum PDF cadastrado nesta disciplina.</p>{% endfor %}</div>
+<div class="form-row"><label>Quantidade<input type="number" name="qty" min="5" max="50" value="15"></label><label>Dificuldade<select name="difficulty"><option>Mista</option><option>Fácil</option><option>Média</option><option>Difícil</option></select></label></div>
+<label>OpenAI API<input type="password" name="api_key" required placeholder="Não será salva"></label>
+<div class="checks">{% for x in ["Conceitos","Exceções","Penas","Majorantes","Pegadinhas","Alterações legislativas"] %}<label><input type="checkbox" name="focus" value="{{x}}" checked> {{x}}</label>{% endfor %}</div>
+<button class="btn primary wide">Gerar questões</button></form></section>{% endblock %}

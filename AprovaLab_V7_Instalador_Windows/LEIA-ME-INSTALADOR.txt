@@ -1,0 +1,94 @@
+APROVALAB V7 — DISTRIBUIÇÃO WINDOWS
+====================================
+
+Esta versão prepara o AprovaLab como um programa Windows instalável.
+
+O RESULTADO FINAL
+-----------------
+AprovaLab_Setup.exe
+
+Ao executar o Setup, o Windows poderá:
+
+• instalar o AprovaLab em Arquivos de Programas;
+• adicionar o AprovaLab ao Menu Iniciar;
+• criar opcionalmente um atalho na Área de Trabalho;
+• registrar o aplicativo em "Aplicativos instalados";
+• oferecer desinstalador padrão do Windows;
+• usar o ícone próprio do AprovaLab.
+
+O usuário final NÃO precisa instalar Python.
+
+ARQUIVOS IMPORTANTES
+--------------------
+AprovaLab.ico
+    Ícone do aplicativo e do instalador.
+
+01_GERAR_APLICATIVO.bat
+    Compila o projeto para um aplicativo Windows.
+
+02_GERAR_INSTALADOR.bat
+    Transforma a compilação em AprovaLab_Setup.exe usando Inno Setup.
+
+GERAR_TUDO.bat
+    Executa as duas etapas na sequência.
+
+AprovaLab_Setup.iss
+    Projeto do instalador Inno Setup.
+
+TESTAR_ANTES_DE_COMPILAR.bat
+    Abre a versão desktop para teste.
+
+.github/workflows/build-windows.yml
+    Alternativa para compilar o Setup no GitHub Actions em uma máquina Windows
+    na nuvem.
+
+COMO GERAR NO WINDOWS
+---------------------
+Para a máquina que vai COMPILAR o programa:
+
+1. Instale Python 3.12+.
+2. Instale Inno Setup 6.
+3. Extraia este pacote.
+4. Dê dois cliques em GERAR_TUDO.bat.
+
+Ao final deverá existir:
+
+installer\AprovaLab_Setup.exe
+
+Depois disso, envie apenas o Setup para quem for utilizar o AprovaLab.
+
+QUEM INSTALA O SETUP NÃO PRECISA DE PYTHON
+-------------------------------------------
+Python, Flask, PyWebView, PyPDF e demais dependências ficam incorporados
+na distribuição compilada.
+
+DESINSTALAÇÃO
+-------------
+O Inno Setup registra automaticamente o desinstalador do AprovaLab no Windows.
+O usuário poderá remover o aplicativo em:
+
+Configurações > Aplicativos > Aplicativos instalados > AprovaLab > Desinstalar
+
+ATALHOS
+-------
+O Setup cria o atalho no Menu Iniciar.
+O atalho da Área de Trabalho aparece como opção durante a instalação.
+
+BUILD NA NUVEM
+--------------
+Se você não quiser preparar uma máquina Windows para compilação, o projeto
+também possui um workflow do GitHub Actions.
+
+Depois de colocar os arquivos em um repositório GitHub:
+
+Actions > Build AprovaLab Windows > Run workflow
+
+O GitHub compilará o aplicativo em Windows e disponibilizará o Setup como
+artefato do workflow.
+
+OBSERVAÇÃO SOBRE ASSINATURA DIGITAL
+-----------------------------------
+O instalador ainda não é assinado digitalmente. Em distribuição pública,
+o Windows SmartScreen pode alertar sobre um aplicativo de editor desconhecido.
+Para remover essa limitação de forma profissional é necessário um certificado
+de assinatura de código emitido para o responsável pelo software.

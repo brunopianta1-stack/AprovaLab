@@ -1,0 +1,78 @@
+APROVALAB V6 DESKTOP
+=====================
+
+Esta versão transforma o AprovaLab em um aplicativo Windows com janela própria.
+
+COMO FUNCIONA
+-------------
+A interface moderna continua sendo HTML/CSS, mas agora é exibida dentro de uma
+janela desktop usando PyWebView. O usuário final não precisa abrir navegador.
+
+Quando compilado com PyInstaller, o Python e as bibliotecas ficam incorporados
+ao aplicativo.
+
+RESULTADO FINAL
+---------------
+Depois da compilação, você terá:
+
+AprovaLab.exe
+
+O usuário final poderá abrir o aplicativo com dois cliques.
+
+PARA O USUÁRIO FINAL
+--------------------
+Depois que o .EXE estiver pronto, ele NÃO precisa instalar:
+- Python
+- Flask
+- PyWebView
+- PyPDF
+- OpenAI SDK
+
+Tudo fica empacotado.
+
+PARA GERAR O EXE NO SEU WINDOWS
+-------------------------------
+A compilação precisa ser feita uma vez em Windows.
+
+1. Instale Python apenas na máquina usada para COMPILAR.
+2. Execute:
+
+   INSTALAR_DESENVOLVIMENTO.bat
+
+3. Depois execute:
+
+   GERAR_EXE.bat
+
+4. O aplicativo aparecerá em:
+
+   dist\AprovaLab\AprovaLab.exe
+
+Se quiser apenas um único arquivo .exe, execute:
+
+   GERAR_EXE_UNICO.bat
+
+IMPORTANTE
+----------
+O EXE único pode demorar um pouco mais para abrir, pois precisa extrair componentes
+temporariamente.
+
+A versão em pasta (GERAR_EXE.bat) costuma iniciar mais rápido e é mais robusta.
+
+OPENAI API
+----------
+A chave da OpenAI continua sendo informada pelo usuário dentro do programa e não
+é gravada automaticamente.
+
+PRÓXIMA ETAPA PROFISSIONAL
+--------------------------
+Para transformar o projeto em um produto distribuível, ainda podem ser adicionados:
+
+- ícone oficial .ico
+- instalador Setup.exe
+- atalho no menu Iniciar
+- desinstalador
+- atualização automática
+- banco criptografado
+- login opcional
+- sincronização em nuvem
+- assinatura digital do executável
