@@ -70,7 +70,7 @@ jobs:
           $hash = (Get-FileHash "installer\AprovaLab_Setup.exe" -Algorithm SHA256).Hash
           "$hash  AprovaLab_Setup.exe" | Set-Content "installer\SHA256SUMS.txt"
 
-      - namevoq: Publicar instalador
+      - name: Publicar instalador
         uses: actions/upload-artifact@v4
         with:
           name: AprovaLab-Windows-Installer
