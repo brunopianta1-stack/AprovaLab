@@ -1,0 +1,40 @@
+name: Build AprovaLab Windows
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Baixar projeto
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Gerar aplicativo Windows
+        shell: cmd
+        run: call 01_GERAR_APLICATIVO.bat
+
+      - name: Instalar Inno Setup
+        shell: powershell
+        run: choco install innosetup -y
+
+      - name: Gerar instalador
+        shell: cmd
+        run: call 02_GERAR_INSTALADOR.bat
+
+      - name: Publicar instalador
+        uses: actions/upload-artifact@v4
+        with:
+          name: AprovaLab-Windows-Setup
+          path: installer/AprovaLab_Setup.exe
