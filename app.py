@@ -5,7 +5,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 from werkzeug.utils import secure_filename
 from pypdf import PdfReader
 from openai import OpenAI
-
+from spaced_repetition import next_review, memory_snapshot
 BASE = Path(__file__).resolve().parent
 
 # Arquivos internos do aplicativo permanecem na pasta de instalação.
@@ -303,53 +303,88 @@ def mixed_exam_questions(exam_id,total):
     random.shuffle(picks)
     return picks[:total]
 
-def record_review(qid,choice,confidence,seconds,mode):
-    c=conn()
-    q=c.execute("SELECT answer FROM questions WHERE id=?",(qid,)).fetchone()
-    if not q: c.close(); return False
-    ok=choice==q["answer"]; now=datetime.now()
-    c.execute("""INSERT INTO reviews(question_id,choice,correct,confidence,seconds,mode,reviewed_at)
-                 VALUES(?,?,?,?,?,?,?)""",(qid,choice,int(ok),confidence,seconds,mode,now.isoformat()))
-    s=c.execute("SELECT * FROM schedule WHERE question_id=?",(qid,)).fetchone()
-    interval=s["interval_days"] if s else 0
-    ease=s["ease"] if s else 2.5
-    reps=s["repetitions"] if s else 0
-    lapses=s["lapses"] if s else 0
-    if not ok:
-        reps=0; lapses+=1; interval=1; ease=max(1.3,ease-.2)
-    else:
-        quality={"Chute":3,"Dúvida":4,"Certeza":5}.get(confidence,4)
-        reps+=1
-        ease=max(1.3,ease+(0.1-(5-quality)*(0.08+(5-quality)*0.02)))
-        interval=1 if reps==1 else 3 if reps==2 else max(4,round(max(interval,1)*ease))
-    due=(now+timedelta(days=interval)).isoformat()
-    c.execute("""INSERT INTO schedule(question_id,interval_days,ease,repetitions,lapses,due_at)
-                 VALUES(?,?,?,?,?,?) ON CONFLICT(question_id) DO UPDATE SET
-                 interval_days=excluded.interval_days,ease=excluded.ease,repetitions=excluded.repetitions,
-                 lapses=excluded.lapses,due_at=excluded.due_at""",(qid,interval,ease,reps,lapses,due))
-    c.commit(); c.close()
-    return ok
+def record_review(qid, choice, confidence, seconds, mode):
+    c = conn()
+
+    q = c.execute(
+        "SELECT answer FROM questions WHERE id=?",
+        (qid,)
+    ).fetchone()
+
+    if not q:
+        c.close()
+        return False, None
+
+    ok = choice == q["answer"]
+    now = datetime.now()
+
+    c.execute("""
+        INSERT INTO reviews(
+            question_id,
+            choice,
+            correct,
+            confidence,
+            seconds,
+            mode,
+            reviewed_at
+        )
+        VALUES(?,?,?,?,?,?,?)
+    """, (
+        qid,
+        choice,
+        int(ok),
+        confidence,
+        seconds,
+        mode,
+        now.isoformat()
+    ))
+
+    memory = next_review(
+        c,
+        qid,
+        ok,
+        confidence
+    )
+
+    c.commit()
+    c.close()
+
+    return ok, memory
 
 @app.route("/")
 def home():
     c=conn(); exams=c.execute("SELECT * FROM exams ORDER BY created_at DESC").fetchall(); c.close()
     return render_template("home.html",exams=exams)
 
-@app.route("/exam/new",methods=["GET","POST"])
-def exam_new():
-    if request.method=="POST":
-        c=conn()
-        try:
-            c.execute("""INSERT INTO exams(name,institution,board,target_date,description,created_at)
-                         VALUES(?,?,?,?,?,?)""",
-                      (request.form["name"].strip(),request.form.get("institution","").strip(),
-                       request.form.get("board","CEBRASPE").strip(),request.form.get("target_date",""),
-                       request.form.get("description","").strip(),datetime.now().isoformat()))
-            c.commit(); eid=c.execute("SELECT id FROM exams WHERE name=?",(request.form["name"].strip(),)).fetchone()["id"]
-            c.close(); return redirect(url_for("exam_dashboard",exam_id=eid))
-        except Exception as e:
-            c.close(); flash(str(e),"error")
-    return render_template("exam_new.html")
+@app.route("/answer", methods=["POST"])
+def answer():
+    data = request.get_json()
+
+    qid = int(data["qid"])
+
+    ok, memory = record_review(
+        qid,
+        data["choice"],
+        data["confidence"],
+        float(data.get("seconds", 0)),
+        data.get("mode", "")
+    )
+
+    c = conn()
+    q = c.execute(
+        "SELECT * FROM questions WHERE id=?",
+        (qid,)
+    ).fetchone()
+    c.close()
+
+    return jsonify({
+        "correct": ok,
+        "answer": q["answer"],
+        "explanation": q["explanation"],
+        "basis": q["basis"],
+        "page": q["page"],
+        "memory": memory
+    })
 
 @app.route("/exam/<int:exam_id>")
 def exam_dashboard(exam_id):
