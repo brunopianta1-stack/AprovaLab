@@ -1,0 +1,4 @@
+{% extends "base.html" %}{% block title %}Configurações · AprovaLab{% endblock %}{% block content %}
+<div class="page-heading"><div><div class="eyebrow">PROJETO</div><h1>Configurações</h1><p class="lead">Atualize os dados que identificam seu objetivo de aprovação.</p></div></div>
+<section class="panel form-card"><form method="post"><label>Nome do concurso<input name="name" value="{{exam.name}}" required></label><div class="form-row"><label>Instituição<input name="institution" value="{{exam.institution}}"></label><label>Banca<input name="board" value="{{exam.board}}"></label></div><label>Data-alvo<input type="date" name="target_date" value="{{exam.target_date}}"></label><label>Descrição<textarea name="description" rows="5">{{exam.description}}</textarea></label><button class="btn primary">Salvar configurações</button></form></section>
+{% endblock %}

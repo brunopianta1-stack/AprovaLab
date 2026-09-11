@@ -415,12 +415,109 @@ def exam_dashboard(exam_id):
     refresh_plan(exam_id)
     c=conn()
     exam=c.execute("SELECT * FROM exams WHERE id=?",(exam_id,)).fetchone()
+    if not exam:
+        c.close()
+        flash("Concurso não encontrado.","error")
+        return redirect(url_for("home"))
     plan=c.execute("""SELECT sp.*,s.name FROM study_plan sp JOIN subjects s ON s.id=sp.subject_id
                       WHERE sp.exam_id=? ORDER BY sp.priority DESC""",(exam_id,)).fetchall()
+    subject_rows=c.execute("""SELECT s.*,COUNT(q.id) questions
+                              FROM subjects s LEFT JOIN questions q ON q.subject_id=s.id
+                              WHERE s.exam_id=? GROUP BY s.id ORDER BY s.name""",(exam_id,)).fetchall()
+    question_ids=c.execute("""SELECT q.id FROM questions q JOIN subjects s ON s.id=q.subject_id
+                              WHERE s.exam_id=?""",(exam_id,)).fetchall()
     c.close()
     stats=exam_subject_stats(exam_id)
     chart=[{"label":s["name"],"value":s["mastery"]} for s in stats]
-    return render_template("exam_dashboard.html",exam=exam,s=summary(exam_id),stats=stats,plan=plan,chart=chart)
+    memory={"learning":0,"consolidating":0,"mastered":0}
+    c=conn()
+    for row in question_ids:
+        snap=memory_snapshot(c,row["id"])
+        css=snap["memory_class"]
+        if css in ("mastered90","mastered95"):
+            memory["mastered"]+=1
+        elif css=="consolidating":
+            memory["consolidating"]+=1
+        else:
+            memory["learning"]+=1
+    c.close()
+    return render_template("exam_dashboard.html",exam=exam,s=summary(exam_id),stats=stats,
+                           plan=plan,chart=chart,subjects=subject_rows,memory=memory)
+
+@app.route("/exam/<int:exam_id>/quick-sim",methods=["POST"])
+def quick_simulator(exam_id):
+    total=max(5,min(100,int(request.form.get("total",20))))
+    subject_id=request.form.get("subject_id",type=int)
+    if subject_id:
+        c=conn()
+        rows=c.execute("""SELECT q.* FROM questions q JOIN subjects s ON s.id=q.subject_id
+                          WHERE q.subject_id=? AND s.exam_id=? ORDER BY RANDOM() LIMIT ?""",
+                       (subject_id,exam_id,total)).fetchall()
+        c.close()
+        qs=[qdict(r) for r in rows]
+    else:
+        qs=mixed_exam_questions(exam_id,total)
+    if not qs:
+        flash("Cadastre ou importe questões antes de iniciar o simulado.","error")
+        return redirect(url_for("exam_dashboard",exam_id=exam_id))
+    return redirect(url_for("quiz",exam_id=exam_id,mode="ids",
+                            ids=",".join(str(q["id"]) for q in qs)))
+
+@app.route("/exam/<int:exam_id>/errors")
+def error_notebook(exam_id):
+    c=conn()
+    exam=c.execute("SELECT * FROM exams WHERE id=?",(exam_id,)).fetchone()
+    rows=c.execute("""SELECT q.id,q.statement,q.topic,q.difficulty,s.name subject_name,
+                      COUNT(r.id) attempts,SUM(CASE WHEN r.correct=0 THEN 1 ELSE 0 END) errors,
+                      ROUND(AVG(r.correct)*100,1) accuracy
+                      FROM questions q JOIN subjects s ON s.id=q.subject_id
+                      JOIN reviews r ON r.question_id=q.id
+                      WHERE s.exam_id=? GROUP BY q.id HAVING errors>0
+                      ORDER BY errors DESC,accuracy ASC""",(exam_id,)).fetchall()
+    c.close()
+    return render_template("errors.html",exam=exam,rows=rows)
+
+@app.route("/exam/<int:exam_id>/statistics")
+def statistics(exam_id):
+    c=conn()
+    exam=c.execute("SELECT * FROM exams WHERE id=?",(exam_id,)).fetchone()
+    sessions=c.execute("""SELECT * FROM sessions WHERE exam_id=?
+                         ORDER BY created_at DESC LIMIT 12""",(exam_id,)).fetchall()
+    c.close()
+    stats=exam_subject_stats(exam_id)
+    return render_template("statistics.html",exam=exam,s=summary(exam_id),stats=stats,
+                           sessions=sessions,chart=[{"label":x["name"],"value":x["accuracy"]} for x in stats])
+
+@app.route("/exam/<int:exam_id>/import")
+def import_hub(exam_id):
+    c=conn()
+    exam=c.execute("SELECT * FROM exams WHERE id=?",(exam_id,)).fetchone()
+    rows=c.execute("""SELECT s.*,COUNT(q.id) questions FROM subjects s
+                      LEFT JOIN questions q ON q.subject_id=s.id
+                      WHERE s.exam_id=? GROUP BY s.id ORDER BY s.name""",(exam_id,)).fetchall()
+    c.close()
+    return render_template("import_hub.html",exam=exam,rows=rows)
+
+@app.route("/exam/<int:exam_id>/settings",methods=["GET","POST"])
+def settings(exam_id):
+    c=conn()
+    exam=c.execute("SELECT * FROM exams WHERE id=?",(exam_id,)).fetchone()
+    if request.method=="POST" and exam:
+        try:
+            name=request.form.get("name","").strip()
+            if not name:
+                raise ValueError("Informe o nome do concurso.")
+            c.execute("""UPDATE exams SET name=?,institution=?,board=?,target_date=?,description=?
+                         WHERE id=?""",(name,request.form.get("institution","").strip(),
+                         request.form.get("board","").strip(),request.form.get("target_date",""),
+                         request.form.get("description","").strip(),exam_id))
+            c.commit()
+            flash("Configurações atualizadas.","ok")
+            exam=c.execute("SELECT * FROM exams WHERE id=?",(exam_id,)).fetchone()
+        except Exception as e:
+            flash(str(e),"error")
+    c.close()
+    return render_template("settings.html",exam=exam)
 
 @app.route("/exam/<int:exam_id>/subjects",methods=["GET","POST"])
 def subjects(exam_id):
@@ -434,7 +531,7 @@ def subjects(exam_id):
                          datetime.now().isoformat()))
             c.commit(); flash("Disciplina criada.","ok")
         except Exception as e: flash(str(e),"error")
-    rows=c.execute("""SELECT s.*,COUNT(d.id) docs,COUNT(q.id) questions
+    rows=c.execute("""SELECT s.*,COUNT(DISTINCT d.id) docs,COUNT(DISTINCT q.id) questions
                       FROM subjects s LEFT JOIN documents d ON d.subject_id=s.id
                       LEFT JOIN questions q ON q.subject_id=s.id
                       WHERE s.exam_id=? GROUP BY s.id ORDER BY s.name""",(exam_id,)).fetchall()
