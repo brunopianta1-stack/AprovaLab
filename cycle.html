@@ -1,0 +1,2 @@
+{% extends "base.html" %}{% block content %}<div class="eyebrow">CICLO RECOMENDADO</div><h1>O que estudar em seguida</h1><p class="lead">A alocação considera lacuna para a meta, erros, revisões vencidas, peso e falta de dados.</p>
+<div class="cycle">{% for x in cycle %}<section class="card cycle-row"><div><small>{{x.share}}% DO CICLO</small><h2>{{x.name}}</h2><p>{{x.reason}}</p></div><strong>{{x.recommended_questions}} questões</strong></section>{% endfor %}</div>{% endblock %}
