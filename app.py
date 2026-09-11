@@ -7,9 +7,21 @@ from pypdf import PdfReader
 from openai import OpenAI
 
 BASE = Path(__file__).resolve().parent
-UPLOADS = BASE / "uploads"
-UPLOADS.mkdir(exist_ok=True)
-DB = BASE / "aprovallab_v5.db"
+
+# Arquivos internos do aplicativo permanecem na pasta de instalação.
+# Dados do usuário ficam no AppData, onde o Windows permite gravação.
+LOCAL_APPDATA = Path(os.environ.get(
+    "LOCALAPPDATA",
+    Path.home() / "AppData" / "Local"
+))
+
+DATA_DIR = LOCAL_APPDATA / "AprovaLab"
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+UPLOADS = DATA_DIR / "uploads"
+UPLOADS.mkdir(parents=True, exist_ok=True)
+
+DB = DATA_DIR / "aprovallab_v5.db"
 
 app = Flask(__name__)
 app.secret_key = "aprovallab-local-v5"
