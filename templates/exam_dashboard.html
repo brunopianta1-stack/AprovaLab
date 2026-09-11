@@ -3,13 +3,45 @@
 {% block content %}
 <section class="command-hero">
   <img src="{{url_for('static',filename='aprovalab-command-hero.png')}}" alt="Agentes das carreiras policiais diante de uma cidade à noite">
-  <div class="command-copy"><div class="hero-logo"><span><svg viewBox="0 0 64 64"><path d="M32 7c-7 0-12 5-12 12-6 1-10 6-10 12 0 5 3 9 7 11-1 8 5 15 13 15h4c8 0 14-7 13-15 4-2 7-6 7-11 0-6-4-11-10-12 0-7-5-12-12-12Z"/><path d="M32 12v40M23 21c5 1 9 5 9 10M41 21c-5 1-9 5-9 10M22 39c5-1 10 2 10 7M42 39c-5-1-10 2-10 7"/></svg></span>Aprova<em>Lab</em></div><h1>Treino inteligente<br>para quem estuda<br>para vencer.</h1><div class="hero-signals"><span>◎ <b>FOCO<br>HOJE</b></span><span>▥ <b>EVOLUÇÃO<br>SEMPRE</b></span><span>♛ <b>APROVAÇÃO<br>EM BREVE</b></span></div></div>
+  <div class="command-copy">
+    <div class="hero-logo"><span><svg viewBox="0 0 64 64"><path d="M32 7c-7 0-12 5-12 12-6 1-10 6-10 12 0 5 3 9 7 11-1 8 5 15 13 15h4c8 0 14-7 13-15 4-2 7-6 7-11 0-6-4-11-10-12 0-7-5-12-12-12Z"/><path d="M32 12v40M23 21c5 1 9 5 9 10M41 21c-5 1-9 5-9 10M22 39c5-1 10 2 10 7M42 39c-5-1-10 2-10 7"/></svg></span>Aprova<em>Lab</em></div>
+    <h1>Treino inteligente<br>para quem estuda<br>para vencer.</h1>
+    <div class="hero-signals"><span>◎ <b>FOCO<br>HOJE</b></span><span>▥ <b>EVOLUÇÃO<br>SEMPRE</b></span><span>♛ <b>APROVAÇÃO<br>EM BREVE</b></span></div>
+  </div>
   <aside class="hero-rail"><div>LEI<br>ESTRATÉGIA<br>REPETIÇÃO<br>RESULTADO</div><p>MESMA<br>MISSÃO:<br>UM BRASIL<br>MAIS SEGURO.</p></aside>
 </section>
+
 <div class="dashboard-grid">
-  <section class="panel progress-panel"><div class="panel-title"><span class="panel-icon">▥</span><div><h2>Seu Progresso</h2><p>Evolução acumulada no projeto</p></div></div><div class="progress-content"><div class="accuracy-ring" style="--accuracy:{{s.accuracy}}"><strong>{{s.accuracy|round|int}}%</strong><span>de acerto</span></div><div class="progress-numbers"><p><i class="good">✓</i><strong>{{s.reviews}}</strong><span>Questões respondidas</span></p><p><i class="lime">▥</i><strong>{{(s.reviews*s.accuracy/100)|round|int}}</strong><span>Acertos</span></p><p><i class="bad">×</i><strong>{{s.reviews-(s.reviews*s.accuracy/100)|round|int}}</strong><span>Erros</span></p></div></div></section>
-  <section class="panel review-panel"><div class="panel-title"><span class="panel-icon">▣</span><div><h2>Revisões de Hoje</h2><p>Fila de repetição espaçada</p></div></div><div class="status-list"><p><i class="dot lime-bg"></i><strong>{{s.due}}</strong><span>Para revisar hoje</span></p><p><i class="dot gold-bg"></i><strong>{{memory.learning}}</strong><span>Em aprendizado</span></p><p><i>↑</i><strong>{{memory.consolidating}}</strong><span>Consolidando</span></p><p><i>★</i><strong>{{memory.mastered}}</strong><span>Dominadas (90%+)</span></p></div><a class="btn primary wide action-btn" href="{{url_for('quiz',exam_id=exam.id,mode='due')}}">▶ Iniciar Revisão <b>→</b></a></section>
-  <section class="panel quick-panel"><div class="panel-title"><span class="panel-icon">▧</span><div><h2>Simulado Rápido</h2><p>Treine agora com questões do banco</p></div></div><form method="post" action="{{url_for('quick_simulator',exam_id=exam.id)}}"><label>Disciplina<select name="subject_id"><option value="">Todas as disciplinas</option>{% for x in subjects %}<option value="{{x.id}}">{{x.name}}</option>{% endfor %}</select></label><label>Quantidade<select name="total"><option value="10">10 questões</option><option value="20" selected>20 questões</option><option value="30">30 questões</option><option value="50">50 questões</option></select></label><label>Modo<select name="question_mode"><option value="ce">Certo / Errado</option></select></label><button class="btn primary wide action-btn">▶ Iniciar Simulado <b>→</b></button></form></section>
+  <section class="panel progress-panel"><div class="panel-title"><span class="panel-icon">▥</span><div><h2>Seu Progresso</h2><p>Evolução nos últimos 30 dias</p></div></div><div class="progress-content"><div class="accuracy-ring" style="--accuracy:{{s.accuracy}}"><strong>{{s.accuracy|round|int}}%</strong><span>de acerto</span></div><div class="progress-numbers"><p><i class="good">✓</i><strong>{{s.reviews}}</strong><span>Questões respondidas</span></p><p><i class="lime">▥</i><strong>{{(s.reviews*s.accuracy/100)|round|int}}</strong><span>Acertos</span></p><p><i class="bad">×</i><strong>{{s.reviews-(s.reviews*s.accuracy/100)|round|int}}</strong><span>Erros</span></p></div></div></section>
+
+  <section class="panel review-panel"><div class="panel-title"><span class="panel-icon">▣</span><div><h2>Revisões de Hoje</h2><p>Questões na sua fila de repetição espaçada</p></div></div><div class="status-list"><p><i class="dot lime-bg"></i><strong>{{s.due}}</strong><span>Para revisar hoje</span></p><p><i class="dot gold-bg"></i><strong>{{memory.learning}}</strong><span>Em aprendizado</span></p><p><i>↑</i><strong>{{memory.consolidating}}</strong><span>Consolidado</span></p><p><i>★</i><strong>{{memory.mastered}}</strong><span>Dominadas (90%+)</span></p></div><a class="btn primary wide action-btn" href="{{url_for('quiz',exam_id=exam.id,mode='due')}}">▶ <span>Iniciar Revisão</span><b>→</b></a></section>
+
+  <section class="panel quick-panel">
+    <div class="panel-title"><span class="panel-icon">▧</span><div><h2>Simulado Rápido</h2><p>Treine agora com questões aleatórias</p></div></div>
+    <form method="post" action="{{url_for('quick_simulator',exam_id=exam.id)}}">
+      <label>Disciplina<select name="subject_id"><option value="">Todas as disciplinas</option>{% for x in subjects %}<option value="{{x.id}}">{{x.name}}</option>{% endfor %}</select></label>
+      <label>Quantidade<select name="total"><option value="10">10 questões</option><option value="20" selected>20 questões</option><option value="30">30 questões</option><option value="50">50 questões</option></select></label>
+      <label>Modo<select name="question_mode"><option value="adaptive">Certo / Errado adaptativo</option><option value="due">Somente revisões</option><option value="errors">Caderno de erros</option><option value="random">Aleatório</option></select></label>
+      <button class="btn primary wide action-btn">▶ <span>Iniciar Simulado</span><b>→</b></button>
+    </form>
+  </section>
 </div>
-<section class="panel disciplines-panel"><div class="section-heading"><div class="panel-title"><span class="panel-icon">◆</span><div><h2>Disciplinas</h2><p>Escolha uma disciplina para estudar, importar ou gerar questões</p></div></div><a class="btn subtle" href="{{url_for('subjects',exam_id=exam.id)}}">⚙ Gerenciar Disciplinas</a></div><div class="discipline-cards">{% for x in subjects %}<article class="discipline-card"><div class="discipline-symbol">{{x.name[:2]|upper}}</div><h3>{{x.name}}</h3><p>{{x.questions}} questões</p><a class="study-link" href="{{url_for('quiz',exam_id=exam.id,mode='subject',subject_id=x.id)}}">Estudar <span>→</span></a></article>{% else %}<div class="empty"><strong>Nenhuma disciplina cadastrada.</strong><span>Comece estruturando o edital do seu concurso.</span><a class="btn primary" href="{{url_for('subjects',exam_id=exam.id)}}">Cadastrar disciplinas</a></div>{% endfor %}</div></section>
+
+<section class="panel disciplines-panel">
+  <div class="section-heading">
+    <div class="panel-title"><span class="panel-icon layers-icon">◆</span><div><h2>Disciplinas</h2><p>Escolha uma disciplina para estudar, importar ou gerar questões</p></div></div>
+    <a class="btn subtle manage-subjects" href="{{url_for('subjects',exam_id=exam.id)}}">⚙ Gerenciar Disciplinas</a>
+  </div>
+  <div class="discipline-cards">
+    {% for x in subjects[:6] %}
+    <article class="discipline-card">
+      <div class="discipline-symbol">{{x.name[:2]|upper}}</div>
+      <h3>{{x.name}}</h3><p>{{x.questions}} questões</p>
+      <a class="study-link" href="{{url_for('quiz',exam_id=exam.id,mode='subject',subject_id=x.id)}}">Estudar <span>→</span></a>
+    </article>
+    {% else %}
+    <div class="empty"><strong>Nenhuma disciplina cadastrada.</strong><span>Comece estruturando o edital do seu concurso.</span><a class="btn primary" href="{{url_for('subjects',exam_id=exam.id)}}">Cadastrar disciplinas</a></div>
+    {% endfor %}
+  </div>
+</section>
 {% endblock %}

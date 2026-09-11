@@ -362,6 +362,8 @@ def record_review(qid, choice, confidence, seconds, mode):
 @app.route("/")
 def home():
     c=conn(); exams=c.execute("SELECT * FROM exams ORDER BY created_at DESC").fetchall(); c.close()
+    if len(exams) == 1:
+        return redirect(url_for("exam_dashboard", exam_id=exams[0]["id"]))
     return render_template("home.html",exams=exams)
 
 @app.route("/exam/new",methods=["GET","POST"])
@@ -474,7 +476,10 @@ def exam_dashboard(exam_id):
 def quick_simulator(exam_id):
     total=max(5,min(100,int(request.form.get("total",20))))
     subject_id=request.form.get("subject_id",type=int)
-    if subject_id:
+    question_mode=request.form.get("question_mode","adaptive")
+    if question_mode in ("due","errors","adaptive"):
+        qs=select_questions(question_mode,total,exam_id,subject_id)
+    elif subject_id:
         c=conn()
         rows=c.execute("""SELECT q.* FROM questions q JOIN subjects s ON s.id=q.subject_id
                           WHERE q.subject_id=? AND s.exam_id=? ORDER BY RANDOM() LIMIT ?""",

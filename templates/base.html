@@ -35,7 +35,7 @@
 </aside>
 <button class="menu-toggle" type="button" aria-label="Abrir menu" onclick="document.body.classList.toggle('menu-open')">☰</button>
 <main class="app-main">
-  <header class="topbar"><div>{% if exam is defined and exam %}<span class="current-project">{{exam.name}} · {{exam.board}}</span>{% endif %}</div><a class="student" href="{{url_for('settings',exam_id=current_exam_id) if current_exam_id else url_for('home')}}"><span>●</span> Aluno <b>⌄</b></a></header>
+  <header class="topbar"><div>{% if exam is defined and exam %}<span class="current-project">{{exam.name}} · {{exam.board}}</span>{% endif %}</div><details class="student-menu"><summary class="student"><span class="student-avatar">●</span> Aluno <b>⌄</b></summary><div class="student-dropdown">{% if current_exam_id %}<a href="{{url_for('settings',exam_id=current_exam_id)}}">Configurações</a>{% endif %}<a href="{{url_for('home')}}">Trocar projeto</a></div></details></header>
   {% with messages=get_flashed_messages(with_categories=true) %}{% for cat,msg in messages %}<div class="flash {{cat}}">{{msg}}</div>{% endfor %}{% endwith %}
   {% block content %}{% endblock %}
   <footer class="app-footer"><span></span><strong>“GRANDES CONQUISTAS EXIGEM MÉTODO, CONSTÂNCIA E PROPÓSITO.”</strong><span></span><b>Aprova<em>Lab</em><small>MAIS QUE ESTUDO.<br>UMA MISSÃO.</small></b></footer>

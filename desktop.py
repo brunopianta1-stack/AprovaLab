@@ -28,8 +28,8 @@ if __name__ == "__main__":
     webview.create_window(
         "AprovaLab",
         f"http://{HOST}:{PORT}",
-        width=1280,
-        height=820,
+        width=1536,
+        height=960,
         min_size=(980, 650),
         resizable=True,
         text_select=True
