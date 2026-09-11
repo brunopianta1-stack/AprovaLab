@@ -1,0 +1,9 @@
+<!doctype html><html lang="pt-br"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AprovaLab V5</title><link rel="stylesheet" href="{{url_for('static',filename='style.css')}}"><script src="https://cdn.jsdelivr.net/npm/chart.js"></script></head><body>
+<aside><div class="brand"><span>▲</span>AprovaLab <em>V5</em></div><nav><a href="{{url_for('home')}}">⌂ Concursos</a>{% if exam is defined and exam %}
+<a href="{{url_for('exam_dashboard',exam_id=exam.id)}}">◫ Painel</a><a href="{{url_for('subjects',exam_id=exam.id)}}">▤ Disciplinas</a>
+<a href="{{url_for('exam_simulator',exam_id=exam.id)}}">◉ Simulado</a><a href="{{url_for('study_cycle',exam_id=exam.id)}}">↻ Ciclo de estudo</a>
+<a href="{{url_for('quiz',exam_id=exam.id,mode='adaptive')}}">◎ Revisão adaptativa</a><a href="{{url_for('quiz',exam_id=exam.id,mode='due')}}">⌛ Revisões vencidas</a>{% endif %}</nav>
+<div class="side-foot">Mapa de domínio do edital<br><small>local • privado • orientado por dados</small></div></aside>
+<main>{% with messages=get_flashed_messages(with_categories=true) %}{% for cat,msg in messages %}<div class="flash {{cat}}">{{msg}}</div>{% endfor %}{% endwith %}{% block content %}{% endblock %}</main>
+{% block scripts %}{% endblock %}</body></html>

@@ -1,0 +1,4 @@
+{% extends "base.html" %}{% block content %}<div class="eyebrow">CONCURSOS</div><h1>Escolha seu projeto de aprovação.</h1>
+<p class="lead">Cada concurso possui edital, disciplinas, pesos, PDFs, métricas e ciclo próprios.</p><a class="btn primary" href="{{url_for('exam_new')}}">+ Novo concurso</a>
+<div class="exam-grid">{% for e in exams %}<a class="exam-card" href="{{url_for('exam_dashboard',exam_id=e.id)}}"><small>{{e.board}}</small><h2>{{e.name}}</h2>
+<p>{{e.institution or 'Instituição não informada'}}</p>{% if e.target_date %}<span>Meta: {{e.target_date}}</span>{% endif %}</a>{% else %}<div class="empty">Crie seu primeiro concurso, por exemplo “PRF 2027”.</div>{% endfor %}</div>{% endblock %}

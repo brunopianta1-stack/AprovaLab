@@ -1,0 +1,5 @@
+{% extends "base.html" %}{% block content %}<div class="eyebrow">NOVO PROJETO</div><h1>Cadastrar concurso</h1>
+<section class="card form-card"><form method="post"><label>Nome<input name="name" placeholder="Ex.: PRF 2027" required></label>
+<div class="form-row"><label>Instituição<input name="institution" placeholder="Polícia Rodoviária Federal"></label><label>Banca<input name="board" value="CEBRASPE"></label></div>
+<label>Data-alvo<input type="date" name="target_date"></label><label>Descrição<textarea name="description" rows="4"></textarea></label>
+<button class="btn primary">Criar concurso</button></form></section>{% endblock %}
